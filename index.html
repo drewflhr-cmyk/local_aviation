@@ -550,16 +550,10 @@
         }
 
         function drawAircraft(centerX, centerY, pxPerMile) {
-            const userPoint = map.latLngToContainerPoint([USER_LAT, USER_LON]);
-
             aircraft.forEach((ac, idx) => {
                 const acPoint = map.latLngToContainerPoint([ac.latitude, ac.longitude]);
-                const rect = canvas.getBoundingClientRect();
-                const canvasRect = container.getBoundingClientRect();
-
-                // Adjust for canvas position relative to container
-                const x = acPoint.x - canvasRect.left;
-                const y = acPoint.y - canvasRect.top;
+                const x = acPoint.x;
+                const y = acPoint.y;
 
                 // Only draw if within canvas bounds (with some margin)
                 if (x < -50 || x > canvas.width + 50 || y < -50 || y > canvas.height + 50) {
@@ -584,14 +578,10 @@
         }
 
         function drawAirports(centerX, centerY, pxPerMile) {
-            const canvasRect = container.getBoundingClientRect();
-
             AIRPORTS.forEach(ap => {
                 const apPoint = map.latLngToContainerPoint([ap.lat, ap.lon]);
-
-                // Adjust for canvas position relative to container
-                const x = apPoint.x - canvasRect.left;
-                const y = apPoint.y - canvasRect.top;
+                const x = apPoint.x;
+                const y = apPoint.y;
 
                 // Only draw if within canvas bounds (with some margin)
                 if (x < -50 || x > canvas.width + 50 || y < -50 || y > canvas.height + 50) {
@@ -803,19 +793,16 @@
         }
 
         canvas.addEventListener('click', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            const canvasRect = container.getBoundingClientRect();
-            const clickX = e.clientX - canvasRect.left;
-            const clickY = e.clientY - canvasRect.top;
+            const containerRect = container.getBoundingClientRect();
+            const clickX = e.clientX - containerRect.left;
+            const clickY = e.clientY - containerRect.top;
 
             // Check aircraft
             for (let i = 0; i < aircraft.length; i++) {
                 const ac = aircraft[i];
                 const acPoint = map.latLngToContainerPoint([ac.latitude, ac.longitude]);
-                const x = acPoint.x - canvasRect.left;
-                const y = acPoint.y - canvasRect.top;
 
-                if (Math.hypot(clickX - x, clickY - y) < 12) {
+                if (Math.hypot(clickX - acPoint.x, clickY - acPoint.y) < 12) {
                     showAircraftDetail(i);
                     return;
                 }
@@ -825,10 +812,8 @@
             for (let i = 0; i < AIRPORTS.length; i++) {
                 const ap = AIRPORTS[i];
                 const apPoint = map.latLngToContainerPoint([ap.lat, ap.lon]);
-                const x = apPoint.x - canvasRect.left;
-                const y = apPoint.y - canvasRect.top;
 
-                if (Math.hypot(clickX - x, clickY - y) < 12) {
+                if (Math.hypot(clickX - apPoint.x, clickY - apPoint.y) < 12) {
                     showAirportDetail(ap.code);
                     return;
                 }
