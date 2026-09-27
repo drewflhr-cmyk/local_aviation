@@ -626,18 +626,16 @@
         // Use OpenSky Network API
         async function fetchAircraft() {
             try {
-                console.log('Fetching aircraft from OpenSky Network...');
-                // OpenSky API uses lat/lon bounds
-                const latRange = RADIUS_MILES / 69;
-                const lonRange = RADIUS_MILES / (69 * Math.cos(USER_LAT * Math.PI / 180));
-                const url = `https://opensky-network.org/api/states/all?lamin=${USER_LAT - latRange}&lamax=${USER_LAT + latRange}&lomin=${USER_LON - lonRange}&lomax=${USER_LON + lonRange}`;
+                console.log('Fetching aircraft from adsb.lol...');
+                const radiusNm = RADIUS_MILES / NM_TO_MILES;
+                const url = `https://api.adsb.lol/v2/point/${USER_LAT}/${USER_LON}/${radiusNm}`;
 
                 const response = await proxyFetch(url);
                 const data = await response.json();
 
-                console.log('Aircraft received:', data.states?.length || 0);
+                console.log('Aircraft received:', data.ac?.length || 0);
 
-                if (!data.states || data.states.length === 0) {
+                if (!data.ac || data.ac.length === 0) {
                     aircraftListDiv.innerHTML = '<p style="color: #999; margin: 0;">No aircraft detected</p>';
                     aircraft = [];
                     drawRadar();
@@ -646,34 +644,27 @@
                     return;
                 }
 
-                aircraft = data.states.map(s => {
-                    const [icao24, callsign, origin_country, time_position, last_contact, longitude, latitude, baro_altitude, on_ground, velocity, true_track, vertical_rate, sensors, geo_altitude, squawk, spi, position_source] = s;
-
-                    // Calculate distance and bearing from user location
-                    const dlat = latitude - USER_LAT;
-                    const dlon = (longitude - USER_LON) * Math.cos(USER_LAT * Math.PI / 180);
-                    const distMiles = Math.sqrt(dlat*dlat + dlon*dlon) * 69;
-                    const bearingRad = Math.atan2(dlon * 69, dlat * 69);
-                    const bearing = (bearingRad * 180 / Math.PI + 360) % 360;
+                aircraft = data.ac.map(a => {
+                    const distMiles = (a.dst || 0) * NM_TO_MILES;
 
                     return {
-                        callsign: (callsign || icao24 || 'Unknown').trim().toUpperCase(),
-                        icao: icao24 || 'N/A',
-                        registration: 'N/A',
-                        latitude: latitude || 0,
-                        longitude: longitude || 0,
-                        altitude: baro_altitude || geo_altitude || 0,
-                        altitudeText: on_ground ? 'GND' : (baro_altitude || geo_altitude || '?'),
-                        velocity: velocity ? Math.round(velocity) : -1,
-                        track: true_track ? Math.round(true_track) : -1,
-                        verticalRate: vertical_rate || 0,
+                        callsign: (a.flight || a.r || a.hex || 'Unknown').trim().toUpperCase(),
+                        icao: a.hex || 'N/A',
+                        registration: a.r || 'N/A',
+                        latitude: a.lat || 0,
+                        longitude: a.lon || 0,
+                        altitude: a.alt_baro !== undefined ? a.alt_baro : a.alt_geom,
+                        altitudeText: a.alt_baro === 'ground' ? 'GND' : (a.alt_baro || a.alt_geom || '?'),
+                        velocity: a.gs ? Math.round(a.gs) : -1,
+                        track: a.track ? Math.round(a.track) : -1,
+                        verticalRate: a.baro_rate || a.geom_rate || 0,
                         distance: distMiles,
-                        bearing: Math.round(bearing),
-                        squawk: squawk || '-',
-                        category: '-',
-                        type: '-'
+                        bearing: a.dir !== undefined ? Math.round(a.dir) : -1,
+                        squawk: a.squawk || '-',
+                        category: a.category || '-',
+                        type: a.t || '-'
                     };
-                }).filter(ac => ac.latitude && ac.longitude && ac.distance <= RADIUS_MILES);
+                }).filter(ac => ac.latitude && ac.longitude);
 
                 // Sort by distance
                 aircraft.sort((a, b) => a.distance - b.distance);
