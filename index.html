@@ -598,18 +598,28 @@
             });
         }
 
-        // Proxy fetch through Vercel backend
+        // CORS proxy with fallback logic
         async function proxyFetch(apiUrl) {
-            if (!IS_CONFIGURED) {
-                throw new Error('Backend not configured. Replace YOUR_VERCEL_PROJECT in the HTML with your Vercel project URL.');
+            const proxies = [
+                (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+                (u) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+            ];
+
+            for (let proxyFn of proxies) {
+                try {
+                    const proxyUrl = proxyFn(apiUrl);
+                    console.log(`Trying CORS proxy...`);
+                    const response = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
+                    if (response.ok) {
+                        console.log('CORS proxy successful');
+                        return response;
+                    }
+                } catch (e) {
+                    console.log(`CORS proxy failed: ${e.message}`);
+                    continue;
+                }
             }
-            const proxyUrl = BACKEND_URL + encodeURIComponent(apiUrl);
-            console.log('Fetching via Vercel backend...');
-            const response = await fetch(proxyUrl);
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-            return response;
+            throw new Error('All CORS proxies failed');
         }
 
         // Use OpenSky Network API
