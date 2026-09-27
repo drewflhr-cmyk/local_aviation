@@ -404,6 +404,10 @@
         const RADIUS_MILES = 50;
         const NM_TO_MILES = 1.15078; // Convert nautical miles to statute miles
 
+        // Vercel backend proxy URL - replace with your Vercel project URL
+        const BACKEND_URL = 'https://YOUR_VERCEL_PROJECT.vercel.app/api/proxy?url=';
+        const IS_CONFIGURED = BACKEND_URL.includes('YOUR_VERCEL_PROJECT') === false;
+
         const AIRPORTS = [
             { code: 'SUA', name: 'Stuart', lat: 27.1907, lon: -80.2556, runways: '09/27' },
             { code: 'X21', name: 'Treasure Coast Intl', lat: 27.2317, lon: -80.4039, runways: '09/27, 18/36' },
@@ -594,6 +598,20 @@
             });
         }
 
+        // Proxy fetch through Vercel backend
+        async function proxyFetch(apiUrl) {
+            if (!IS_CONFIGURED) {
+                throw new Error('Backend not configured. Replace YOUR_VERCEL_PROJECT in the HTML with your Vercel project URL.');
+            }
+            const proxyUrl = BACKEND_URL + encodeURIComponent(apiUrl);
+            console.log('Fetching via Vercel backend...');
+            const response = await fetch(proxyUrl);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            return response;
+        }
+
         // Use adsb.lol API (same as your Arduino sketch!)
         async function fetchAircraft() {
             try {
@@ -602,7 +620,7 @@
                 const radiusNm = RADIUS_MILES / NM_TO_MILES;
                 const url = `https://api.adsb.lol/v2/point/${USER_LAT}/${USER_LON}/${radiusNm}`;
 
-                const response = await fetch(url);
+                const response = await proxyFetch(url);
                 const data = await response.json();
 
                 console.log('Aircraft received:', data.ac?.length || 0);
@@ -746,7 +764,7 @@
                 console.log('Fetching METAR...');
                 const url = 'https://avwx.rest/api/metar/KSUA?options=info,translate';
 
-                const response = await fetch(url);
+                const response = await proxyFetch(url);
                 const data = await response.json();
 
                 console.log('METAR response:', data);
