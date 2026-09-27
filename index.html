@@ -780,11 +780,17 @@
                 const data = await response.json();
 
                 console.log('METAR response:', data);
+                console.log('METAR raw field:', data.raw);
 
                 if (data.raw) {
                     metarDiv.textContent = data.raw;
+                    console.log('METAR displayed:', data.raw);
+                } else if (data.error) {
+                    console.error('METAR API error:', data.error);
+                    metarDiv.textContent = `METAR error: ${data.error}`;
                 } else {
-                    metarDiv.textContent = 'METAR unavailable';
+                    console.warn('No raw METAR data in response');
+                    metarDiv.textContent = 'METAR unavailable - no data';
                 }
             } catch (e) {
                 console.error('METAR error:', e);
