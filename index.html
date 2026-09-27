@@ -698,6 +698,11 @@
                          onclick="showAircraftDetail(${idx});">
                         <strong>${ac.callsign}</strong>
                         <div class="detail">${ac.distance.toFixed(1)} mi • ${ac.altitudeText} ft</div>
+                        <div class="detail" style="font-size: 11px; color: #0066cc;">
+                            ${ac.velocity >= 0 ? ac.velocity + ' kt' : 'N/A'} •
+                            ${ac.track >= 0 ? ac.track + '°' : 'N/A'} •
+                            ${ac.verticalRate ? (ac.verticalRate > 0 ? '↑' : '↓') + Math.abs(Math.round(ac.verticalRate)) : '—'} ft/m
+                        </div>
                     </div>
                 `).join('');
             }
