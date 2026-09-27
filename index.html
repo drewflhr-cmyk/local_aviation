@@ -550,15 +550,21 @@
         }
 
         function drawAircraft(centerX, centerY, pxPerMile) {
-            aircraft.forEach((ac, idx) => {
-                const dlat = ac.latitude - USER_LAT;
-                const dlon = (ac.longitude - USER_LON) * Math.cos(USER_LAT * Math.PI / 180);
-                const distMiles = Math.sqrt(dlat*dlat + dlon*dlon) * 69;
-                const bearingRad = Math.atan2(dlon * 69, dlat * 69);
-                const radarAngle = bearingRad - Math.PI / 2;
+            const userPoint = map.latLngToContainerPoint([USER_LAT, USER_LON]);
 
-                const x = centerX + Math.cos(radarAngle) * distMiles * pxPerMile;
-                const y = centerY + Math.sin(radarAngle) * distMiles * pxPerMile;
+            aircraft.forEach((ac, idx) => {
+                const acPoint = map.latLngToContainerPoint([ac.latitude, ac.longitude]);
+                const rect = canvas.getBoundingClientRect();
+                const canvasRect = container.getBoundingClientRect();
+
+                // Adjust for canvas position relative to container
+                const x = acPoint.x - canvasRect.left;
+                const y = acPoint.y - canvasRect.top;
+
+                // Only draw if within canvas bounds (with some margin)
+                if (x < -50 || x > canvas.width + 50 || y < -50 || y > canvas.height + 50) {
+                    return;
+                }
 
                 ctx.fillStyle = hoveredAircraft === idx ? '#ffff00' : '#00ffff';
                 ctx.beginPath();
@@ -573,19 +579,24 @@
                 ctx.font = 'bold 10px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(ac.callsign.substring(0, 3), x, y);
+                ctx.fillText(ac.callsign.substring(0, 2), x, y);
             });
         }
 
         function drawAirports(centerX, centerY, pxPerMile) {
-            AIRPORTS.forEach(ap => {
-                const dlat = ap.lat - USER_LAT;
-                const dlon = (ap.lon - USER_LON) * Math.cos(USER_LAT * Math.PI / 180);
-                const bearingRad = Math.atan2(dlon * 69, dlat * 69);
-                const radarAngle = bearingRad - Math.PI / 2;
+            const canvasRect = container.getBoundingClientRect();
 
-                const x = centerX + Math.cos(radarAngle) * (Math.sqrt(dlat*dlat + dlon*dlon) * 69) * pxPerMile;
-                const y = centerY + Math.sin(radarAngle) * (Math.sqrt(dlat*dlat + dlon*dlon) * 69) * pxPerMile;
+            AIRPORTS.forEach(ap => {
+                const apPoint = map.latLngToContainerPoint([ap.lat, ap.lon]);
+
+                // Adjust for canvas position relative to container
+                const x = apPoint.x - canvasRect.left;
+                const y = apPoint.y - canvasRect.top;
+
+                // Only draw if within canvas bounds (with some margin)
+                if (x < -50 || x > canvas.width + 50 || y < -50 || y > canvas.height + 50) {
+                    return;
+                }
 
                 ctx.fillStyle = '#00ff00';
                 ctx.beginPath();
@@ -600,7 +611,7 @@
                 ctx.font = 'bold 9px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(ap.code, x, y);
+                ctx.fillText(ap.code.substring(0, 2), x, y);
             });
         }
 
@@ -793,22 +804,16 @@
 
         canvas.addEventListener('click', (e) => {
             const rect = canvas.getBoundingClientRect();
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-            const pxPerMile = canvas.width / (RADIUS_MILES * 2);
-            const clickX = e.clientX - rect.left;
-            const clickY = e.clientY - rect.top;
+            const canvasRect = container.getBoundingClientRect();
+            const clickX = e.clientX - canvasRect.left;
+            const clickY = e.clientY - canvasRect.top;
 
+            // Check aircraft
             for (let i = 0; i < aircraft.length; i++) {
                 const ac = aircraft[i];
-                const dlat = ac.latitude - USER_LAT;
-                const dlon = (ac.longitude - USER_LON) * Math.cos(USER_LAT * Math.PI / 180);
-                const distMiles = Math.sqrt(dlat*dlat + dlon*dlon) * 69;
-                const bearingRad = Math.atan2(dlon * 69, dlat * 69);
-                const radarAngle = bearingRad - Math.PI / 2;
-
-                const x = centerX + Math.cos(radarAngle) * distMiles * pxPerMile;
-                const y = centerY + Math.sin(radarAngle) * distMiles * pxPerMile;
+                const acPoint = map.latLngToContainerPoint([ac.latitude, ac.longitude]);
+                const x = acPoint.x - canvasRect.left;
+                const y = acPoint.y - canvasRect.top;
 
                 if (Math.hypot(clickX - x, clickY - y) < 12) {
                     showAircraftDetail(i);
@@ -816,16 +821,12 @@
                 }
             }
 
+            // Check airports
             for (let i = 0; i < AIRPORTS.length; i++) {
                 const ap = AIRPORTS[i];
-                const dlat = ap.lat - USER_LAT;
-                const dlon = (ap.lon - USER_LON) * Math.cos(USER_LAT * Math.PI / 180);
-                const distMiles = Math.sqrt(dlat*dlat + dlon*dlon) * 69;
-                const bearingRad = Math.atan2(dlon * 69, dlat * 69);
-                const radarAngle = bearingRad - Math.PI / 2;
-
-                const x = centerX + Math.cos(radarAngle) * distMiles * pxPerMile;
-                const y = centerY + Math.sin(radarAngle) * distMiles * pxPerMile;
+                const apPoint = map.latLngToContainerPoint([ap.lat, ap.lon]);
+                const x = apPoint.x - canvasRect.left;
+                const y = apPoint.y - canvasRect.top;
 
                 if (Math.hypot(clickX - x, clickY - y) < 12) {
                     showAirportDetail(ap.code);
