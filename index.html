@@ -601,15 +601,16 @@
         // CORS proxy with fallback logic
         async function proxyFetch(apiUrl) {
             const proxies = [
+                (u) => `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(u)}`,
+                (u) => `https://cors-anywhere.herokuapp.com/${u}`,
                 (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-                (u) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
             ];
 
             for (let proxyFn of proxies) {
                 try {
                     const proxyUrl = proxyFn(apiUrl);
                     console.log(`Trying CORS proxy...`);
-                    const response = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
+                    const response = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
                     if (response.ok) {
                         console.log('CORS proxy successful');
                         return response;
