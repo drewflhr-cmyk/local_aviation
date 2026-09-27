@@ -20,11 +20,17 @@ export default async function handler(req, res) {
     const decodedUrl = decodeURIComponent(url);
     console.log('Proxy requesting:', decodedUrl);
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 25000); // 25 second timeout
+
     const response = await fetch(decodedUrl, {
+      signal: controller.signal,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       }
     });
+
+    clearTimeout(timeout);
 
     const text = await response.text();
     console.log('Response status:', response.status);
