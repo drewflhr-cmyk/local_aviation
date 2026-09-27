@@ -103,6 +103,7 @@
             border-radius: 4px;
             font-weight: 500;
             z-index: 101;
+            max-width: 140px;
         }
 
         .sidebar {
@@ -182,7 +183,7 @@
             color: #1a1a1a;
             max-height: 120px;
             overflow-y: auto;
-            min-height: 40px;
+            min-height: 60px;
         }
 
         .modal {
@@ -240,19 +241,28 @@
             font-weight: 500;
         }
 
-        #diagramContainer {
-            width: 100%;
-            height: 400px;
-            border: 1px solid #e0e0e0;
-            border-radius: 4px;
-            margin: 1rem 0;
-            background: #f9f9f9;
+        #diagramLinks {
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: #f5f5f5;
+            border-radius: 6px;
+            text-align: center;
         }
 
-        .diagram-loading {
-            padding: 20px;
-            text-align: center;
-            color: #666;
+        #diagramLinks a {
+            display: inline-block;
+            margin: 4px 4px;
+            padding: 8px 12px;
+            background: #0066cc;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 12px;
+            transition: background 0.2s;
+        }
+
+        #diagramLinks a:hover {
+            background: #0052a3;
         }
 
         .modal-close {
@@ -372,15 +382,7 @@
         <div class="modal-content">
             <h3 id="airportName"></h3>
             <table id="airportTable"></table>
-            <div id="diagramContainer" class="diagram-loading">
-                <p id="diagramStatus">Loading airport diagram...</p>
-            </div>
-            <p style="margin-top: 1rem; font-size: 12px; color: #666;">
-                External links:
-                <a id="skyvectorLink" href="#" target="_blank" style="color: #0066cc;">SkyVector</a> |
-                <a id="googlemapsLink" href="#" target="_blank" style="color: #0066cc;">Google Maps</a> |
-                <a id="aopaLink" href="#" target="_blank" style="color: #0066cc;">AOPA Diagram</a>
-            </p>
+            <div id="diagramLinks"></div>
             <button class="modal-close" onclick="document.getElementById('airportModal').classList.remove('active')">Close</button>
         </div>
     </div>
@@ -400,28 +402,21 @@
         let USER_LAT = 27.248805;
         let USER_LON = -80.259035;
         const RADIUS_MILES = 50;
+        const NM_TO_MILES = 1.15078; // Convert nautical miles to statute miles
 
         const AIRPORTS = [
-            { code: 'SUA', name: 'Stuart', lat: 27.1907, lon: -80.2556, runways: '09/27', state: 'FL', region: 'SE-3' },
-            { code: 'X21', name: 'Treasure Coast Intl', lat: 27.2317, lon: -80.4039, runways: '09/27, 18/36', state: 'FL', region: 'SE-3' },
-            { code: 'OBK', name: 'Okeechobee', lat: 27.0942, lon: -80.8364, runways: '09/27', state: 'FL', region: 'SE-3' },
-            { code: 'VRB', name: 'Vero Beach Intl', lat: 27.6553, lon: -80.3519, runways: '09/27, 16/34', state: 'FL', region: 'SE-3' },
-            { code: 'PBI', name: 'Palm Beach Intl (DJT)', lat: 26.6826, lon: -80.0952, runways: '09L/27R, 09R/27L', state: 'FL', region: 'SE-3' },
-            { code: 'BCT', name: 'Boca Raton', lat: 26.3787, lon: -80.2258, runways: '09/27', state: 'FL', region: 'SE-3' },
+            { code: 'SUA', name: 'Stuart', lat: 27.1907, lon: -80.2556, runways: '09/27' },
+            { code: 'X21', name: 'Treasure Coast Intl', lat: 27.2317, lon: -80.4039, runways: '09/27, 18/36' },
+            { code: 'OBK', name: 'Okeechobee', lat: 27.0942, lon: -80.8364, runways: '09/27' },
+            { code: 'VRB', name: 'Vero Beach Intl', lat: 27.6553, lon: -80.3519, runways: '09/27, 16/34' },
+            { code: 'PBI', name: 'Palm Beach Intl (DJT)', lat: 26.6826, lon: -80.0952, runways: '09L/27R, 09R/27L' },
+            { code: 'BCT', name: 'Boca Raton', lat: 26.3787, lon: -80.2258, runways: '09/27' },
         ];
 
         let aircraft = [];
         let hoveredAircraft = null;
         let map = null;
         let airportMarkers = [];
-        let userMarker = null;
-        let radiusCircle = null;
-
-        // CORS Proxy wrapper
-        function proxyFetch(url) {
-            const corsProxy = 'https://api.allorigins.win/raw?url=';
-            return fetch(corsProxy + encodeURIComponent(url));
-        }
 
         function getGeolocation() {
             if (navigator.geolocation) {
@@ -431,8 +426,6 @@
                     updateLocation();
                     locationStatus.textContent = '✓ Location detected';
                 });
-            } else {
-                locationStatus.textContent = 'Geolocation not available';
             }
         }
 
@@ -447,22 +440,13 @@
 
             USER_LAT = lat;
             USER_LON = lon;
-            locationStatus.textContent = `✓ Location: ${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+            locationStatus.textContent = `✓ ${lat.toFixed(4)}, ${lon.toFixed(4)}`;
 
             if (map) {
                 map.setView([USER_LAT, USER_LON], 9);
-                if (userMarker) map.removeLayer(userMarker);
-                userMarker = L.circleMarker([USER_LAT, USER_LON], {
-                    radius: 6, color: '#0066cc', fill: true, fillColor: '#0066cc', weight: 2
-                }).addTo(map);
-
-                if (radiusCircle) map.removeLayer(radiusCircle);
-                radiusCircle = L.circle([USER_LAT, USER_LON], {
-                    radius: RADIUS_MILES * 1609.34, color: '#0066cc', fill: false, weight: 2, opacity: 0.5
-                }).addTo(map);
+                updateAirportMarkers();
             }
 
-            updateAirportMarkers();
             updateAirportList();
             drawRadar();
             fetchAircraft();
@@ -473,15 +457,15 @@
             map = L.map('mapContainer').setView([USER_LAT, USER_LON], 9);
 
             L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                attribution: 'Esri, DigitalGlobe, Earthstar Geographics, CNES/Airbus DS',
+                attribution: 'Esri',
                 maxZoom: 18
             }).addTo(map);
 
-            radiusCircle = L.circle([USER_LAT, USER_LON], {
+            L.circle([USER_LAT, USER_LON], {
                 radius: RADIUS_MILES * 1609.34, color: '#0066cc', fill: false, weight: 2, opacity: 0.5
             }).addTo(map);
 
-            userMarker = L.circleMarker([USER_LAT, USER_LON], {
+            L.circleMarker([USER_LAT, USER_LON], {
                 radius: 6, color: '#0066cc', fill: true, fillColor: '#0066cc', weight: 2
             }).addTo(map);
 
@@ -493,11 +477,8 @@
             airportMarkers = [];
 
             AIRPORTS.forEach(ap => {
-                const marker = L.marker([ap.lat, ap.lon], {
-                    title: ap.code
-                }).addTo(map);
-
-                marker.bindPopup(`<strong>${ap.code}</strong><br>${ap.name}<br><a onclick="showAirportDetail('${ap.code}')">View Details</a>`);
+                const marker = L.marker([ap.lat, ap.lon], { title: ap.code }).addTo(map);
+                marker.bindPopup(`<strong>${ap.code}</strong><br>${ap.name}`);
                 marker.on('click', () => showAirportDetail(ap.code));
                 airportMarkers.push(marker);
             });
@@ -521,7 +502,6 @@
 
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
             ctx.lineWidth = 1;
-
             for (let i = 1; i <= 5; i++) {
                 const radius = (i * 10) * pxPerMile;
                 ctx.beginPath();
@@ -531,7 +511,6 @@
 
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
             ctx.lineWidth = 0.5;
-
             for (let angle = 0; angle < 360; angle += 30) {
                 const rad = (angle - 90) * Math.PI / 180;
                 const x1 = centerX + Math.cos(rad) * (RADIUS_MILES * pxPerMile);
@@ -615,75 +594,80 @@
             });
         }
 
+        // Use adsb.lol API (same as your Arduino sketch!)
         async function fetchAircraft() {
             try {
-                console.log(`Fetching aircraft around ${USER_LAT}, ${USER_LON}...`);
-                const url = `https://opensky-network.org/api/states/all?lamin=${USER_LAT - 0.8}&lamax=${USER_LAT + 0.8}&lomin=${USER_LON - 0.8}&lomax=${USER_LON + 0.8}`;
-                const response = await proxyFetch(url);
+                console.log('Fetching aircraft from adsb.lol...');
+                // Convert miles to nautical miles for the API
+                const radiusNm = RADIUS_MILES / NM_TO_MILES;
+                const url = `https://api.adsb.lol/v2/point/${USER_LAT}/${USER_LON}/${radiusNm}`;
 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
+                const response = await fetch(url);
                 const data = await response.json();
-                console.log('Aircraft data received:', data.states?.length || 0, 'aircraft');
 
-                if (!data.states || data.states.length === 0) {
+                console.log('Aircraft received:', data.ac?.length || 0);
+
+                if (!data.ac || data.ac.length === 0) {
                     aircraftListDiv.innerHTML = '<p style="color: #999; margin: 0;">No aircraft detected</p>';
                     aircraft = [];
                     drawRadar();
-                    statusDiv.textContent = 'Radar: Live (No aircraft)';
+                    statusDiv.textContent = 'Radar: Live (none)';
                     statusDiv.style.background = 'rgba(100,150,0,0.7)';
                     return;
                 }
 
-                aircraft = data.states.map(s => ({
-                    callsign: s[1]?.trim() || 'Unknown',
-                    icao: s[0],
-                    latitude: s[6],
-                    longitude: s[5],
-                    altitude: s[7],
-                    velocity: s[9],
-                    track: s[10],
-                    verticalRate: s[11],
-                    geoAltitude: s[13],
-                    lastContact: s[4]
-                })).filter(ac => ac.latitude && ac.longitude);
+                aircraft = data.ac.map(a => {
+                    // adsb.lol provides distance and bearing directly
+                    const distMiles = (a.dst || 0) * NM_TO_MILES;
+
+                    return {
+                        callsign: (a.flight || a.r || a.hex || 'Unknown').trim().toUpperCase(),
+                        icao: a.hex || 'N/A',
+                        registration: a.r || 'N/A',
+                        latitude: a.lat || 0,
+                        longitude: a.lon || 0,
+                        altitude: a.alt_baro !== undefined ? a.alt_baro : a.alt_geom,
+                        altitudeText: a.alt_baro === 'ground' ? 'GND' : (a.alt_baro || a.alt_geom || '?'),
+                        velocity: a.gs ? Math.round(a.gs) : -1,
+                        track: a.track ? Math.round(a.track) : -1,
+                        verticalRate: a.baro_rate || a.geom_rate || 0,
+                        distance: distMiles,
+                        bearing: a.dir !== undefined ? Math.round(a.dir) : -1,
+                        squawk: a.squawk || '-',
+                        category: a.category || '-',
+                        type: a.t || '-'
+                    };
+                }).filter(ac => ac.latitude && ac.longitude);
+
+                // Sort by distance
+                aircraft.sort((a, b) => a.distance - b.distance);
 
                 console.log('Filtered aircraft:', aircraft.length);
                 updateAircraftList();
                 drawRadar();
-                statusDiv.textContent = 'Radar: Live';
+                statusDiv.textContent = `Radar: Live (${aircraft.length})`;
                 statusDiv.style.background = 'rgba(0,150,0,0.7)';
             } catch (e) {
-                console.error('Error fetching aircraft:', e);
-                statusDiv.textContent = 'Radar: Error';
+                console.error('Aircraft error:', e);
+                statusDiv.textContent = 'Aircraft: Error';
                 statusDiv.style.background = 'rgba(150,0,0,0.7)';
                 aircraftListDiv.innerHTML = '<p class="error-text">Error loading aircraft data</p>';
             }
         }
 
         function updateAircraftList() {
-            const sorted = aircraft
-                .map((ac, idx) => {
-                    const dlat = ac.latitude - USER_LAT;
-                    const dlon = (ac.longitude - USER_LON) * Math.cos(USER_LAT * Math.PI / 180);
-                    const dist = Math.sqrt(dlat*dlat + dlon*dlon) * 69;
-                    return { ...ac, dist, idx };
-                })
-                .sort((a, b) => a.dist - b.dist)
-                .slice(0, 12);
+            const sorted = aircraft.slice(0, 12);
 
             if (sorted.length === 0) {
-                aircraftListDiv.innerHTML = '<p style="color: #999; margin: 0;">No aircraft detected</p>';
+                aircraftListDiv.innerHTML = '<p style="color: #999; margin: 0;">No aircraft nearby</p>';
             } else {
-                aircraftListDiv.innerHTML = sorted.map(ac => `
+                aircraftListDiv.innerHTML = sorted.map((ac, idx) => `
                     <div class="aircraft-item"
-                         onmouseover="hoveredAircraft = ${ac.idx}; drawRadar();"
+                         onmouseover="hoveredAircraft = ${idx}; drawRadar();"
                          onmouseout="hoveredAircraft = null; drawRadar();"
-                         onclick="showAircraftDetail(${ac.idx});">
+                         onclick="showAircraftDetail(${idx});">
                         <strong>${ac.callsign}</strong>
-                        <div class="detail">${ac.dist.toFixed(1)} mi • ${ac.altitude ? Math.round(ac.altitude * 3.28084) + ' ft' : '?'}</div>
+                        <div class="detail">${ac.distance.toFixed(1)} mi • ${ac.altitudeText} ft</div>
                     </div>
                 `).join('');
             }
@@ -700,30 +684,30 @@
             document.getElementById('airportList').innerHTML = sorted.map(ap => `
                 <div class="airport-item" onclick="showAirportDetail('${ap.code}')">
                     <strong>${ap.code}</strong> ${ap.name}
-                    <div class="distance">${ap.dist.toFixed(1)} miles</div>
+                    <div class="distance">${ap.dist.toFixed(1)} mi</div>
                 </div>
             `).join('');
         }
 
         function showAircraftDetail(idx) {
             const ac = aircraft[idx];
-            const dlat = ac.latitude - USER_LAT;
-            const dlon = (ac.longitude - USER_LON) * Math.cos(USER_LAT * Math.PI / 180);
-            const dist = Math.sqrt(dlat*dlat + dlon*dlon) * 69;
-            const bearing = Math.atan2(dlon * 69, dlat * 69) * 180 / Math.PI;
+            const bearing = ac.bearing >= 0 ? ac.bearing : 0;
             const bearingText = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'][Math.round((bearing + 360) % 360 / 22.5) % 16];
 
-            document.getElementById('detailCallsign').textContent = ac.callsign;
+            document.getElementById('detailCallsign').textContent = ac.callsign || 'Unknown';
             const rows = `
-                <tr><td>ICAO</td><td style="font-family: monospace;">${ac.icao || 'N/A'}</td></tr>
+                <tr><td>Registration</td><td>${ac.registration}</td></tr>
+                <tr><td>ICAO (Hex)</td><td style="font-family: monospace;">${ac.icao}</td></tr>
                 <tr><td>Latitude</td><td>${ac.latitude.toFixed(4)}°</td></tr>
                 <tr><td>Longitude</td><td>${ac.longitude.toFixed(4)}°</td></tr>
-                <tr><td>Altitude</td><td>${ac.altitude ? Math.round(ac.altitude * 3.28084).toLocaleString() + ' ft' : 'N/A'}</td></tr>
-                <tr><td>Velocity</td><td>${ac.velocity ? Math.round(ac.velocity * 1.94384).toLocaleString() + ' kt' : 'N/A'}</td></tr>
-                <tr><td>Track</td><td>${ac.track ? Math.round(ac.track).toLocaleString() + '°' : 'N/A'}</td></tr>
-                <tr><td>Vertical Rate</td><td>${ac.verticalRate ? Math.round(ac.verticalRate * 196.85).toLocaleString() + ' ft/m' : 'N/A'}</td></tr>
-                <tr><td>Distance</td><td>${dist.toFixed(1)} miles</td></tr>
-                <tr><td>Bearing</td><td>${Math.round((bearing + 360) % 360)}° (${bearingText})</td></tr>
+                <tr><td>Altitude</td><td>${ac.altitudeText} ft</td></tr>
+                <tr><td>Velocity</td><td>${ac.velocity >= 0 ? ac.velocity + ' kt' : 'N/A'}</td></tr>
+                <tr><td>Track</td><td>${ac.track >= 0 ? ac.track + '°' : 'N/A'}</td></tr>
+                <tr><td>Vertical Rate</td><td>${ac.verticalRate ? Math.round(ac.verticalRate) + ' ft/m' : 'N/A'}</td></tr>
+                <tr><td>Distance</td><td>${ac.distance.toFixed(1)} miles</td></tr>
+                <tr><td>Bearing</td><td>${ac.bearing >= 0 ? ac.bearing + '° (' + bearingText + ')' : 'N/A'}</td></tr>
+                <tr><td>Squawk</td><td>${ac.squawk}</td></tr>
+                <tr><td>Type</td><td>${ac.type}</td></tr>
             `;
             document.getElementById('detailTable').innerHTML = rows;
             detailModal.classList.add('active');
@@ -746,75 +730,35 @@
             `;
             document.getElementById('airportTable').innerHTML = rows;
 
-            loadAirportDiagram(ap);
-
-            document.getElementById('skyvectorLink').href = `https://skyvector.com/?ll=${ap.lat},${ap.lon}&chart=301&zoom=2`;
-            document.getElementById('googlemapsLink').href = `https://maps.google.com/?q=${ap.lat},${ap.lon}`;
-            document.getElementById('aopaLink').href = `https://www.aopa.org/ustprocs/current/${ap.state.toLowerCase()}/`;
+            const diagLinks = `
+                <strong style="display: block; margin-bottom: 10px; text-align: center;">Airport Diagrams & Info:</strong>
+                <a href="https://www.airnav.com/airport/${code}" target="_blank">AirNav</a>
+                <a href="https://skyvector.com/?ll=${ap.lat},${ap.lon}&chart=301&zoom=2" target="_blank">SkyVector (VFR)</a>
+                <a href="https://maps.google.com/?q=${ap.lat},${ap.lon}" target="_blank">Google Maps</a>
+            `;
+            document.getElementById('diagramLinks').innerHTML = diagLinks;
 
             airportModal.classList.add('active');
-        }
-
-        function loadAirportDiagram(ap) {
-            const diagramContainer = document.getElementById('diagramContainer');
-            const diagramStatus = document.getElementById('diagramStatus');
-
-            diagramStatus.textContent = 'Loading airport diagram...';
-
-            const today = new Date();
-            const dates = [];
-            for (let i = 0; i < 3; i++) {
-                const d = new Date(today);
-                d.setDate(d.getDate() - i * 7);
-                const yyyy = d.getFullYear();
-                const mm = String(d.getMonth() + 1).padStart(2, '0');
-                const dd = String(d.getDate()).padStart(2, '0');
-                dates.push(`${yyyy}${mm}${dd}`);
-            }
-
-            let found = false;
-            for (const dateStr of dates) {
-                const url = `https://www.aopa.org/ustprocs/${dateStr}/${ap.region}/${ap.code.toLowerCase()}_airport_diagram.pdf`;
-
-                fetch(url, { method: 'HEAD' })
-                    .then(r => {
-                        if (r.ok) {
-                            diagramContainer.innerHTML = `<iframe src="${url}" style="width:100%;height:100%;border:none;"></iframe>`;
-                            found = true;
-                        }
-                    })
-                    .catch(() => {
-                        if (!found && dateStr === dates[dates.length - 1]) {
-                            diagramStatus.textContent = 'Diagram not available for this airport';
-                            diagramContainer.innerHTML = `<p style="padding:20px;color:#666;">Try the AOPA link below to find the current airport diagram.</p>`;
-                        }
-                    });
-
-                if (found) break;
-            }
         }
 
         async function fetchMETAR() {
             try {
                 console.log('Fetching METAR...');
                 const url = 'https://avwx.rest/api/metar/KSUA?options=info,translate';
-                const response = await proxyFetch(url);
 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
+                const response = await fetch(url);
                 const data = await response.json();
-                console.log('METAR data:', data);
+
+                console.log('METAR response:', data);
 
                 if (data.raw) {
                     metarDiv.textContent = data.raw;
                 } else {
-                    metarDiv.textContent = 'METAR: Data unavailable';
+                    metarDiv.textContent = 'METAR unavailable';
                 }
             } catch (e) {
-                console.error('METAR fetch error:', e);
-                metarDiv.innerHTML = '<span class="error-text">Failed to load METAR. Using proxy service...</span>';
+                console.error('METAR error:', e);
+                metarDiv.innerHTML = '<span style="color: #999;">METAR service unavailable</span>';
             }
         }
 
@@ -837,8 +781,7 @@
                 const x = centerX + Math.cos(radarAngle) * distMiles * pxPerMile;
                 const y = centerY + Math.sin(radarAngle) * distMiles * pxPerMile;
 
-                const dist = Math.hypot(clickX - x, clickY - y);
-                if (dist < 12) {
+                if (Math.hypot(clickX - x, clickY - y) < 12) {
                     showAircraftDetail(i);
                     return;
                 }
@@ -855,8 +798,7 @@
                 const x = centerX + Math.cos(radarAngle) * distMiles * pxPerMile;
                 const y = centerY + Math.sin(radarAngle) * distMiles * pxPerMile;
 
-                const dist = Math.hypot(clickX - x, clickY - y);
-                if (dist < 12) {
+                if (Math.hypot(clickX - x, clickY - y) < 12) {
                     showAirportDetail(ap.code);
                     return;
                 }
@@ -871,10 +813,11 @@
         fetchAircraft();
         fetchMETAR();
 
+        // Refresh aircraft every 10 seconds, METAR every 10 minutes
         setInterval(fetchAircraft, 10000);
         setInterval(fetchMETAR, 600000);
 
-        console.log('Radar initialized with location:', USER_LAT, USER_LON);
+        console.log('Radar ready - using adsb.lol API');
     </script>
 </body>
 </html>
