@@ -779,18 +779,21 @@
                 const response = await proxyFetch(url);
                 const data = await response.json();
 
-                console.log('METAR response:', data);
-                console.log('METAR raw field:', data.raw);
+                console.log('METAR response:', JSON.stringify(data, null, 2));
+                console.log('METAR keys:', Object.keys(data));
 
                 if (data.raw) {
                     metarDiv.textContent = data.raw;
                     console.log('METAR displayed:', data.raw);
+                } else if (data.results && data.results[0] && data.results[0].raw) {
+                    metarDiv.textContent = data.results[0].raw;
+                    console.log('METAR displayed from results:', data.results[0].raw);
                 } else if (data.error) {
                     console.error('METAR API error:', data.error);
                     metarDiv.textContent = `METAR error: ${data.error}`;
                 } else {
-                    console.warn('No raw METAR data in response');
-                    metarDiv.textContent = 'METAR unavailable - no data';
+                    console.warn('No raw METAR data - response structure:', data);
+                    metarDiv.textContent = 'METAR unavailable';
                 }
             } catch (e) {
                 console.error('METAR error:', e);
