@@ -476,6 +476,9 @@
                 radius: 6, color: '#0066cc', fill: true, fillColor: '#0066cc', weight: 2
             }).addTo(map);
 
+            // Redraw canvas when map changes
+            map.on('zoom pan', drawRadar);
+
             updateAirportMarkers();
         }
 
@@ -604,12 +607,22 @@
         // Vercel backend proxy
         async function proxyFetch(apiUrl) {
             const proxyUrl = BACKEND_URL + encodeURIComponent(apiUrl);
-            console.log('Fetching via Vercel backend...');
-            const response = await fetch(proxyUrl);
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
+            console.log('Fetching via Vercel backend:', apiUrl);
+
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 15000);
+
+            try {
+                const response = await fetch(proxyUrl, { signal: controller.signal });
+                clearTimeout(timeout);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return response;
+            } catch (e) {
+                clearTimeout(timeout);
+                throw e;
             }
-            return response;
         }
 
         // Use OpenSky Network API
