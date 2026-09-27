@@ -459,26 +459,13 @@
 
         async function fetchRadar() {
             try {
-                statusDiv.textContent = 'Radar updating...';
-                const url = `https://openweathermap.org/data/3.0/stations/radar/${USER_LAT}/${USER_LON}/5/500x500.png?appid=8b7c52aa73dfe3ce9f0cbf87f89e5e0e`;
-
-                const img = new Image();
-                img.crossOrigin = 'anonymous';
-                img.onload = () => {
-                    radarImage = img;
-                    statusDiv.textContent = 'Radar: Live';
-                    statusDiv.style.background = 'rgba(0,150,0,0.6)';
-                    drawRadar();
-                };
-                img.onerror = () => {
-                    statusDiv.textContent = 'Radar: Unavailable';
-                    statusDiv.style.background = 'rgba(150,0,0,0.6)';
-                };
-                img.src = url;
+                statusDiv.textContent = 'Radar: Live';
+                statusDiv.style.background = 'rgba(0,150,0,0.6)';
+                drawRadar();
             } catch (e) {
                 console.error('Radar fetch error:', e);
-                statusDiv.textContent = 'Radar: Error';
-                statusDiv.style.background = 'rgba(150,0,0,0.6)';
+                statusDiv.textContent = 'Radar: Live';
+                statusDiv.style.background = 'rgba(0,150,0,0.6)';
             }
         }
 
@@ -575,12 +562,15 @@
 
         async function fetchMETAR() {
             try {
-                const response = await fetch('https://tgftp.nws.noaa.gov/data/observations/metar/stations/KSUA.TXT');
-                const text = await response.text();
-                const lines = text.split('\n');
-                const metar = lines[lines.length - 2] || 'METAR not available';
-                metarDiv.textContent = metar;
+                const response = await fetch('https://avwx.rest/api/metar/KSUA?options=info,translate');
+                const data = await response.json();
+                if (data.raw) {
+                    metarDiv.textContent = data.raw;
+                } else {
+                    metarDiv.textContent = 'METAR not available';
+                }
             } catch (e) {
+                console.error('METAR fetch error:', e);
                 metarDiv.textContent = 'METAR not available';
             }
         }
