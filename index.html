@@ -393,7 +393,6 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/rainviewer-api/4.10.1/RainViewerAPI.min.js"></script>
     <script>
         const canvas = document.getElementById('radarCanvas');
         const ctx = canvas.getContext('2d');
@@ -491,20 +490,23 @@
         let radarLayer = null;
 
         function initWeatherRadar() {
-            // Initialize RainViewer weather radar
-            if (typeof RainViewerAPI !== 'undefined') {
-                RainViewerAPI.getRasterTiles('https://tiles.rainviewer.com/v2/radar', function(rasterUrl, timestamp) {
-                    if (radarLayer) map.removeLayer(radarLayer);
-
-                    radarLayer = L.tileLayer(rasterUrl, {
+            // Add RainViewer weather radar tiles directly
+            try {
+                radarLayer = L.tileLayer(
+                    'https://tile.rainviewer.com/v2/radar/now/{z}/{x}/{y}/2/1_1.png',
+                    {
                         tileSize: 256,
-                        opacity: 0.6,
+                        opacity: 0.5,
                         zIndex: 300,
-                        attribution: 'RainViewer'
-                    }).addTo(map);
+                        attribution: 'RainViewer',
+                        maxZoom: 18,
+                        minZoom: 0
+                    }
+                ).addTo(map);
 
-                    console.log('Weather radar loaded');
-                });
+                console.log('Weather radar layer initialized');
+            } catch (e) {
+                console.error('Weather radar initialization failed:', e);
             }
         }
 
