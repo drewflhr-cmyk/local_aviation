@@ -579,7 +579,7 @@
 
                 ctx.fillStyle = hoveredAircraft === idx ? '#ffff00' : '#00ffff';
                 ctx.beginPath();
-                ctx.arc(x, y, 6, 0, Math.PI * 2);
+                ctx.arc(x, y, 9, 0, Math.PI * 2);
                 ctx.fill();
 
                 ctx.strokeStyle = '#fff';
@@ -587,10 +587,10 @@
                 ctx.stroke();
 
                 ctx.fillStyle = '#000';
-                ctx.font = 'bold 10px sans-serif';
+                ctx.font = 'bold 11px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(ac.callsign.substring(0, 2), x, y);
+                ctx.fillText(ac.callsign.substring(0, 3), x, y);
             });
         }
 
@@ -607,7 +607,7 @@
 
                 ctx.fillStyle = '#00ff00';
                 ctx.beginPath();
-                ctx.rect(x - 6, y - 6, 12, 12);
+                ctx.rect(x - 8, y - 8, 16, 16);
                 ctx.fill();
 
                 ctx.strokeStyle = '#fff';
@@ -615,10 +615,10 @@
                 ctx.stroke();
 
                 ctx.fillStyle = '#000';
-                ctx.font = 'bold 9px sans-serif';
+                ctx.font = 'bold 11px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(ap.code.substring(0, 2), x, y);
+                ctx.fillText(ap.code.substring(0, 3), x, y);
             });
         }
 
