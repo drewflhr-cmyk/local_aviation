@@ -490,21 +490,22 @@
         let radarLayer = null;
 
         function initWeatherRadar() {
-            // Add RainViewer weather radar tiles directly
+            // Add weather radar tiles via Vercel proxy to bypass network restrictions
             try {
                 radarLayer = L.tileLayer(
-                    'https://tile.rainviewer.com/v2/radar/now/{z}/{x}/{y}/2/1_1.png',
+                    BACKEND_URL + encodeURIComponent('https://tile.rainviewer.com/v2/radar/now/{z}/{x}/{y}/2/1_1.png'),
                     {
                         tileSize: 256,
                         opacity: 0.5,
                         zIndex: 300,
                         attribution: 'RainViewer',
                         maxZoom: 18,
-                        minZoom: 0
+                        minZoom: 0,
+                        crossOrigin: 'anonymous'
                     }
                 ).addTo(map);
 
-                console.log('Weather radar layer initialized');
+                console.log('Weather radar layer initialized via proxy');
             } catch (e) {
                 console.error('Weather radar initialization failed:', e);
             }
@@ -810,34 +811,53 @@
 
                 let metarText = null;
 
-                // Try KSUA first
+                // Try CheckWX API (more reliable)
                 try {
-                    const url = 'https://avwx.rest/api/metar/KSUA?options=info,translate';
+                    const url = 'https://api.checkwx.com/metar/KSUA/parsed';
                     const response = await proxyFetch(url);
                     const data = await response.json();
 
-                    // Try multiple possible field names
-                    metarText = data.raw ||
-                               (data.results && data.results[0] && data.results[0].raw) ||
-                               (data.data && data.data.raw) ||
-                               (data.sample && data.sample.raw) ||
-                               (data.meta && data.meta.raw) ||
-                               null;
-
-                    // Verify it's actually KSUA
-                    if (metarText && metarText.substring(0, 4) === 'KSUA') {
-                        console.log('Got KSUA METAR:', metarText);
-                    } else if (metarText) {
-                        console.log('AVWX returned', metarText.substring(0, 4), 'instead of KSUA');
-                        metarText = null;
+                    // CheckWX returns data in results array
+                    if (data.results && data.results[0]) {
+                        const metar = data.results[0];
+                        // Build METAR string from parsed data
+                        if (metar.raw_text) {
+                            metarText = metar.raw_text;
+                            console.log('Got KSUA from CheckWX:', metarText);
+                        }
                     }
                 } catch (e) {
-                    console.log('AVWX KSUA request failed:', e.message);
+                    console.log('CheckWX request failed:', e.message);
                 }
 
-                // Fallback to nearby airports if KSUA fails
+                // Fallback to AVWX
                 if (!metarText) {
-                    const fallbacks = ['KTIX', 'KMCO', 'KPBI'];
+                    try {
+                        const url = 'https://avwx.rest/api/metar/KSUA?options=info,translate';
+                        const response = await proxyFetch(url);
+                        const data = await response.json();
+
+                        metarText = data.raw ||
+                                   (data.results && data.results[0] && data.results[0].raw) ||
+                                   (data.data && data.data.raw) ||
+                                   (data.sample && data.sample.raw) ||
+                                   (data.meta && data.meta.raw) ||
+                                   null;
+
+                        if (metarText && metarText.substring(0, 4) === 'KSUA') {
+                            console.log('Got KSUA from AVWX:', metarText);
+                        } else if (metarText) {
+                            console.log('AVWX returned', metarText.substring(0, 4), 'instead of KSUA - rejecting');
+                            metarText = null;
+                        }
+                    } catch (e) {
+                        console.log('AVWX failed:', e.message);
+                    }
+                }
+
+                // Last resort: try nearby major airports
+                if (!metarText) {
+                    const fallbacks = ['KMCO', 'KPBI'];
                     for (let airport of fallbacks) {
                         try {
                             const url = `https://avwx.rest/api/metar/${airport}?options=info,translate`;
