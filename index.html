@@ -879,6 +879,10 @@
                     html += `<div class="ksua-live-atc-link" onclick="openLiveATC()">Stuart Ground/Tower</div>`;
                     html += `<div class="ksua-weather-link" onclick="openKSUAWeather()">KSUA Weather</div>`;
                 }
+                // Add PBI Tower button after PBI airport
+                if (ap.code === 'PBI') {
+                    html += `<div class="ksua-live-atc-link" onclick="openPBITower()">PBI Tower</div>`;
+                }
             });
             document.getElementById('airportList').innerHTML = html;
         }
@@ -932,6 +936,11 @@
         function openLiveATC() {
             // Open LiveATC link in a new tab
             window.open('https://www.liveatc.net/search/?icao=ksua', '_blank');
+        }
+
+        function openPBITower() {
+            // Open PBI Tower LiveATC link in a new tab
+            window.open('https://www.liveatc.net/hlisten.php?mount=kpbi2_twr&icao=kdjt', '_blank');
         }
 
         function openKSUAWeather() {
