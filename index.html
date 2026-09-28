@@ -131,6 +131,17 @@
             margin-bottom: 0.75rem;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .scroll-hint {
+            font-size: 11px;
+            font-weight: 400;
+            text-transform: none;
+            letter-spacing: 0;
+            color: #999;
         }
 
         #aircraftList, #airportList {
@@ -358,14 +369,20 @@
 
             <div class="sidebar">
                 <div class="panel">
-                    <div class="panel-title">Aircraft Nearby</div>
+                    <div class="panel-title">
+                        <span>Aircraft Nearby</span>
+                        <span class="scroll-hint">(Scroll for more)</span>
+                    </div>
                     <div id="aircraftList">
                         <p style="color: #999; margin: 0;">Loading…</p>
                     </div>
                 </div>
 
                 <div class="panel">
-                    <div class="panel-title">Airports</div>
+                    <div class="panel-title">
+                        <span>Airports</span>
+                        <span class="scroll-hint">(Scroll for more)</span>
+                    </div>
                     <div id="airportList">
                         <p style="color: #999; margin: 0;">Loading…</p>
                     </div>
