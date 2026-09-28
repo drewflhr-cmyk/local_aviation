@@ -490,25 +490,9 @@
         let radarLayer = null;
 
         function initWeatherRadar() {
-            // Add weather radar tiles via Vercel proxy to bypass network restrictions
-            try {
-                radarLayer = L.tileLayer(
-                    BACKEND_URL + encodeURIComponent('https://tile.rainviewer.com/v2/radar/now/{z}/{x}/{y}/2/1_1.png'),
-                    {
-                        tileSize: 256,
-                        opacity: 0.5,
-                        zIndex: 300,
-                        attribution: 'RainViewer',
-                        maxZoom: 18,
-                        minZoom: 0,
-                        crossOrigin: 'anonymous'
-                    }
-                ).addTo(map);
-
-                console.log('Weather radar layer initialized via proxy');
-            } catch (e) {
-                console.error('Weather radar initialization failed:', e);
-            }
+            // Weather radar disabled due to network restrictions
+            // RainViewer tiles require dynamic URL substitution which doesn't work through proxy
+            console.log('Weather radar: Network environment blocking tile access');
         }
 
         function updateAirportMarkers() {
@@ -807,33 +791,15 @@
 
         async function fetchMETAR() {
             try {
-                console.log('Fetching METAR for KSUA...');
+                console.log('Fetching METAR...');
 
                 let metarText = null;
+                const preferredAirports = ['KSUA', 'KTIX', 'KMCO', 'KPBI', 'KVB'];
 
-                // Try CheckWX API (more reliable)
-                try {
-                    const url = 'https://api.checkwx.com/metar/KSUA/parsed';
-                    const response = await proxyFetch(url);
-                    const data = await response.json();
-
-                    // CheckWX returns data in results array
-                    if (data.results && data.results[0]) {
-                        const metar = data.results[0];
-                        // Build METAR string from parsed data
-                        if (metar.raw_text) {
-                            metarText = metar.raw_text;
-                            console.log('Got KSUA from CheckWX:', metarText);
-                        }
-                    }
-                } catch (e) {
-                    console.log('CheckWX request failed:', e.message);
-                }
-
-                // Fallback to AVWX
-                if (!metarText) {
+                // Try each airport with AVWX until we get valid data
+                for (let airport of preferredAirports) {
                     try {
-                        const url = 'https://avwx.rest/api/metar/KSUA?options=info,translate';
+                        const url = `https://avwx.rest/api/metar/${airport}?options=info,translate`;
                         const response = await proxyFetch(url);
                         const data = await response.json();
 
@@ -844,49 +810,25 @@
                                    (data.meta && data.meta.raw) ||
                                    null;
 
-                        if (metarText && metarText.substring(0, 4) === 'KSUA') {
-                            console.log('Got KSUA from AVWX:', metarText);
-                        } else if (metarText) {
-                            console.log('AVWX returned', metarText.substring(0, 4), 'instead of KSUA - rejecting');
-                            metarText = null;
+                        if (metarText && !metarText.includes('ERROR')) {
+                            const reportedCode = metarText.substring(0, 4);
+                            console.log(`Got METAR from ${reportedCode} (requested ${airport}):`, metarText);
+                            break;
                         }
                     } catch (e) {
-                        console.log('AVWX failed:', e.message);
-                    }
-                }
-
-                // Last resort: try nearby major airports
-                if (!metarText) {
-                    const fallbacks = ['KMCO', 'KPBI'];
-                    for (let airport of fallbacks) {
-                        try {
-                            const url = `https://avwx.rest/api/metar/${airport}?options=info,translate`;
-                            const response = await proxyFetch(url);
-                            const data = await response.json();
-
-                            metarText = data.raw ||
-                                       (data.results && data.results[0] && data.results[0].raw) ||
-                                       (data.data && data.data.raw) ||
-                                       (data.sample && data.sample.raw) ||
-                                       (data.meta && data.meta.raw) ||
-                                       null;
-
-                            if (metarText && !metarText.includes('ERROR')) {
-                                console.log(`Using fallback ${airport}:`, metarText);
-                                break;
-                            }
-                        } catch (e) {
-                            console.log(`Fallback ${airport} failed`);
-                        }
+                        console.log(`METAR request for ${airport} failed:`, e.message);
+                        continue;
                     }
                 }
 
                 if (metarText) {
                     const reportedCode = metarText.substring(0, 4);
-                    metarDiv.innerHTML = `<div style="font-size: 12px; color: #666; margin-bottom: 4px;">${reportedCode}</div>${metarText}`;
+                    const airportName = AIRPORTS.find(ap => ap.code === reportedCode) ?
+                                       AIRPORTS.find(ap => ap.code === reportedCode).name : reportedCode;
+                    metarDiv.innerHTML = `<div style="font-size: 12px; color: #666; margin-bottom: 4px;">${reportedCode} - ${airportName}</div>${metarText}`;
                     console.log('METAR displayed from:', reportedCode);
                 } else {
-                    console.warn('METAR unavailable');
+                    console.warn('METAR unavailable from all airports');
                     metarDiv.textContent = 'METAR unavailable';
                 }
             } catch (e) {
