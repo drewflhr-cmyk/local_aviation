@@ -181,9 +181,30 @@
             color: #888;
         }
 
-        .ksua-weather-link {
+        .ksua-live-atc-link {
             display: block;
             margin-top: 1rem;
+            padding: 10px;
+            background: #00a3cc;
+            color: white;
+            text-align: center;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: background 0.2s;
+            text-decoration: none;
+            border: none;
+            font-family: inherit;
+        }
+
+        .ksua-live-atc-link:hover {
+            background: #0084a3;
+        }
+
+        .ksua-weather-link {
+            display: block;
+            margin-top: 0.5rem;
             padding: 10px;
             background: #0066cc;
             color: white;
@@ -853,8 +874,9 @@
                         <div class="distance">${ap.dist.toFixed(1)} mi</div>
                     </div>
                 `;
-                // Add KSUA Weather button after SUA airport
+                // Add KSUA buttons after SUA airport
                 if (ap.code === 'SUA') {
+                    html += `<div class="ksua-live-atc-link" onclick="openLiveATC()">Stuart Ground/Tower</div>`;
                     html += `<div class="ksua-weather-link" onclick="openKSUAWeather()">KSUA Weather</div>`;
                 }
             });
@@ -905,6 +927,11 @@
                 const diagramUrl = `https://cdn.jsdelivr.net/gh/drewflhr-cmyk/local_aviation@main/public/images/airports/${code}.${ext}`;
                 window.open(diagramUrl, '_blank');
             }
+        }
+
+        function openLiveATC() {
+            // Open LiveATC link in a new tab
+            window.open('https://www.liveatc.net/search/?icao=ksua', '_blank');
         }
 
         function openKSUAWeather() {
