@@ -807,6 +807,7 @@
                          onmouseout="hoveredAircraft = null; drawRadar();"
                          onclick="showAircraftDetail(${idx});">
                         <strong>${ac.callsign}</strong>
+                        <div class="detail" style="font-size: 11px; color: #888;">${ac.type || 'N/A'}</div>
                         <div class="detail">${ac.distance.toFixed(1)} mi • ${ac.altitudeText} ft</div>
                         <div class="detail" style="font-size: 11px; color: #0066cc;">
                             ${ac.velocity >= 0 ? ac.velocity + ' kt' : 'N/A'} •
