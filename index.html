@@ -363,7 +363,6 @@
                     <div id="airportList">
                         <p style="color: #999; margin: 0;">Loading…</p>
                     </div>
-                    <div class="ksua-weather-link" onclick="openKSUAWeather()">KSUA Weather</div>
                 </div>
             </div>
         </div>
@@ -734,12 +733,20 @@
                 return { ...ap, dist };
             }).sort((a, b) => a.dist - b.dist);
 
-            document.getElementById('airportList').innerHTML = sorted.map(ap => `
-                <div class="airport-item" onclick="showAirportDetail('${ap.code}')">
-                    <strong>${ap.code}</strong> ${ap.name}
-                    <div class="distance">${ap.dist.toFixed(1)} mi</div>
-                </div>
-            `).join('');
+            let html = '';
+            sorted.forEach(ap => {
+                html += `
+                    <div class="airport-item" onclick="showAirportDetail('${ap.code}')">
+                        <strong>${ap.code}</strong> ${ap.name}
+                        <div class="distance">${ap.dist.toFixed(1)} mi</div>
+                    </div>
+                `;
+                // Add KSUA Weather button after SUA airport
+                if (ap.code === 'SUA') {
+                    html += `<div class="ksua-weather-link" onclick="openKSUAWeather()">KSUA Weather</div>`;
+                }
+            });
+            document.getElementById('airportList').innerHTML = html;
         }
 
         function showAircraftDetail(idx) {
