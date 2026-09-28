@@ -825,11 +825,18 @@
                     const reportedCode = metarText.substring(0, 4);
                     const airportName = AIRPORTS.find(ap => ap.code === reportedCode) ?
                                        AIRPORTS.find(ap => ap.code === reportedCode).name : reportedCode;
-                    metarDiv.innerHTML = `<div style="font-size: 12px; color: #666; margin-bottom: 4px;">${reportedCode} - ${airportName}</div>${metarText}`;
+                    const aviationWeatherLink = `https://aviationweather.gov/data/metar/?decoded=1&ids=${reportedCode}`;
+                    metarDiv.innerHTML = `
+                        <div style="font-size: 12px; color: #666; margin-bottom: 4px;">
+                            ${reportedCode} - ${airportName}
+                            <a href="${aviationWeatherLink}" target="_blank" style="margin-left: 8px; color: #0066cc; text-decoration: none; font-size: 10px;">View Full Data →</a>
+                        </div>
+                        ${metarText}
+                    `;
                     console.log('METAR displayed from:', reportedCode);
                 } else {
                     console.warn('METAR unavailable from all airports');
-                    metarDiv.textContent = 'METAR unavailable';
+                    metarDiv.innerHTML = '<a href="https://aviationweather.gov/data/metar/" target="_blank" style="color: #0066cc;">METAR unavailable - View aviationweather.gov</a>';
                 }
             } catch (e) {
                 console.error('METAR error:', e);
