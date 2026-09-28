@@ -682,7 +682,7 @@
         async function fetchSigmets() {
             try {
                 const url = 'https://aviationweather.gov/api/data/airsigmet?format=json';
-                const response = await fetch(url);
+                const response = await proxyFetch(url);
                 if (!response.ok) throw new Error('SIGMET fetch failed');
 
                 const data = await response.json();
