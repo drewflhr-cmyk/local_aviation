@@ -899,26 +899,17 @@
             const ap = AIRPORTS.find(a => a.code === code);
             if (!ap) return;
 
-            const dlat = ap.lat - USER_LAT;
-            const dlon = (ap.lon - USER_LON) * Math.cos(USER_LAT * Math.PI / 180);
-            const dist = Math.sqrt(dlat*dlat + dlon*dlon) * 69;
-
             document.getElementById('airportName').textContent = `${ap.code} - ${ap.name}`;
-            const rows = `
-                <tr><td>Latitude</td><td>${ap.lat.toFixed(4)}°</td></tr>
-                <tr><td>Longitude</td><td>${ap.lon.toFixed(4)}°</td></tr>
-                <tr><td>Distance</td><td>${dist.toFixed(1)} miles</td></tr>
-                <tr><td>Runways</td><td>${ap.runways}</td></tr>
-            `;
-            document.getElementById('airportTable').innerHTML = rows;
+            document.getElementById('airportTable').innerHTML = '';
 
-            // Build diagram links - only show local diagrams/photos if available
+            // Show diagram/photo link directly
             let diagLinks = '';
 
             if (airportDiagrams[code]) {
                 const ext = airportDiagrams[code];
                 const displayName = ext === 'jpg' ? 'Airport Photo' : 'Diagram';
-                diagLinks = `<a href="/images/airports/${code}.${ext}" target="_blank">${displayName}</a>`;
+                const rawUrl = `https://raw.githubusercontent.com/drewflhr-cmyk/local_aviation/main/public/images/airports/${code}.${ext}`;
+                diagLinks = `<a href="${rawUrl}" target="_blank">${displayName}</a>`;
             } else {
                 diagLinks = '<p style="color: #999; text-align: center;">No diagram available</p>';
             }
