@@ -345,6 +345,10 @@
             <span class="info-text" id="locationStatus"></span>
         </div>
 
+        <div id="sigmetPanel" style="margin-bottom: 1rem; padding: 0.75rem; background: #fff; border-radius: 8px; border: 1px solid #e0e0e0; font-size: 12px; color: #666; overflow: hidden;">
+            <div id="sigmetDisplay" style="white-space: nowrap; overflow-x: auto; font-size: 12px;">SIGMETs: loading...</div>
+        </div>
+
         <div class="radar-section">
             <div class="radar-container">
                 <div id="mapContainer"></div>
@@ -601,7 +605,7 @@
 
                 ctx.fillStyle = '#00ff00';
                 ctx.beginPath();
-                ctx.rect(x - 9, y - 10, 18, 20);
+                ctx.rect(x - 11, y - 8, 22, 16);
                 ctx.fill();
 
                 ctx.strokeStyle = '#fff';
@@ -634,6 +638,101 @@
             } catch (e) {
                 clearTimeout(timeout);
                 throw e;
+            }
+        }
+
+        // Check if a SIGMET is near home
+        function sigmetNearHome(coords) {
+            const MAX_SIGMET_POINTS = 64;
+            const SIGMET_RANGE_MILES = 25;
+            const NM_RANGE = SIGMET_RANGE_MILES / NM_TO_MILES;
+
+            let xs = [], ys = [];
+            let n = 0;
+            const cosLat = Math.cos(USER_LAT * Math.PI / 180);
+
+            for (let c of coords) {
+                if (n >= MAX_SIGMET_POINTS) break;
+                if (!c.lat || !c.lon) continue;
+                xs[n] = (c.lon - USER_LON) * 60 * cosLat;  // nautical miles east
+                ys[n] = (c.lat - USER_LAT) * 60;            // nautical miles north
+                n++;
+            }
+            if (n < 3) return false;
+
+            let inside = false;
+            let minDist = 1e9;
+
+            for (let i = 0, j = n - 1; i < n; j = i++) {
+                let xi = xs[i], yi = ys[i], xj = xs[j], yj = ys[j];
+                if (((yi > 0) !== (yj > 0)) && (0 < (xj - xi) * (0 - yi) / (yj - yi) + xi)) {
+                    inside = !inside;
+                }
+                let dx = xj - xi, dy = yj - yi;
+                let len2 = dx * dx + dy * dy;
+                let t = len2 > 0 ? Math.max(0, Math.min(1, -(xi * dx + yi * dy) / len2)) : 0;
+                let cx = xi + t * dx, cy = yi + t * dy;
+                let d = Math.sqrt(cx * cx + cy * cy);
+                if (d < minDist) minDist = d;
+            }
+            return inside || minDist <= NM_RANGE;
+        }
+
+        // Fetch SIGMETs from aviationweather.gov
+        async function fetchSigmets() {
+            try {
+                const url = 'https://aviationweather.gov/api/data/airsigmet?format=json';
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('SIGMET fetch failed');
+
+                const data = await response.json();
+                let sigmetText = '';
+                let found = 0;
+
+                for (let s of data) {
+                    if (s.airSigmetType !== 'SIGMET') continue;
+                    if (!sigmetNearHome(s.coords)) continue;
+
+                    let hazard = s.hazard || '';
+                    let hazardName = hazard;
+                    if (hazard === 'CONVECTIVE') hazardName = 'Thunderstorms';
+                    else if (hazard === 'TURB') hazardName = 'Turbulence';
+                    else if (hazard === 'ICE') hazardName = 'Icing';
+                    else if (hazard === 'IFR') hazardName = 'IFR';
+                    else if (hazard === 'MTN OBSCN') hazardName = 'Mtn obscuration';
+                    else if (hazard === 'ASH') hazardName = 'Volcanic ash';
+                    else if (hazard === 'TROPICAL CYCLONE' || hazard === 'TC') hazardName = 'Tropical cyclone';
+
+                    let altText = '';
+                    if (s.altitudeHi1 > 0) {
+                        let lowAlt = s.altitudeLow1 >= 18000 ? 'FL' + Math.round(s.altitudeLow1/100) : s.altitudeLow1 + ' ft';
+                        let highAlt = s.altitudeHi1 >= 18000 ? 'FL' + Math.round(s.altitudeHi1/100) : s.altitudeHi1 + ' ft';
+                        altText = ' ' + lowAlt + '-' + highAlt;
+                    }
+
+                    let until = '';
+                    if (s.validTimeTo) {
+                        let dt = new Date(s.validTimeTo);
+                        until = ' until ' + String(dt.getUTCHours()).padStart(2, '0') + String(dt.getUTCMinutes()).padStart(2, '0') + 'Z';
+                    }
+
+                    if (found > 0) sigmetText += '     |     ';
+                    sigmetText += 'SIGMET ' + (s.seriesId || '') + ': ' + hazardName + altText + until;
+                    found++;
+                }
+
+                const sigmetDiv = document.getElementById('sigmetDisplay');
+                if (found === 0) {
+                    sigmetDiv.textContent = 'No SIGMETs within 25 miles';
+                    sigmetDiv.style.color = '#666';
+                } else {
+                    sigmetDiv.textContent = sigmetText;
+                    sigmetDiv.style.color = '#d32f2f';
+                    sigmetDiv.style.fontWeight = 'bold';
+                }
+            } catch (e) {
+                console.log('SIGMET fetch error:', e.message);
+                document.getElementById('sigmetDisplay').textContent = 'SIGMETs unavailable';
             }
         }
 
@@ -837,9 +936,11 @@
         resizeCanvas();
         updateAirportList();
         fetchAircraft();
+        fetchSigmets();
 
-        // Refresh aircraft every 10 seconds
+        // Refresh aircraft every 10 seconds, SIGMETs every 5 minutes
         setInterval(fetchAircraft, 10000);
+        setInterval(fetchSigmets, 5 * 60 * 1000);
 
         console.log('Radar ready - using adsb.lol API');
     </script>
