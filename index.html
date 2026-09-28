@@ -791,52 +791,55 @@
 
         async function fetchMETAR() {
             try {
-                console.log('Fetching METAR...');
+                console.log('Fetching METAR for KSUA...');
 
                 let metarText = null;
-                const preferredAirports = ['KSUA', 'KTIX', 'KMCO', 'KPBI', 'KVB'];
+                const targetAirport = 'KSUA';
+                const aviationWeatherLink = `https://aviationweather.gov/data/metar/?decoded=1&ids=${targetAirport}`;
 
-                // Try each airport with AVWX until we get valid data
-                for (let airport of preferredAirports) {
-                    try {
-                        const url = `https://avwx.rest/api/metar/${airport}?options=info,translate`;
-                        const response = await proxyFetch(url);
-                        const data = await response.json();
+                // Try to fetch KSUA specifically
+                try {
+                    const url = `https://avwx.rest/api/metar/${targetAirport}?options=info,translate`;
+                    const response = await proxyFetch(url);
+                    const data = await response.json();
 
-                        metarText = data.raw ||
-                                   (data.results && data.results[0] && data.results[0].raw) ||
-                                   (data.data && data.data.raw) ||
-                                   (data.sample && data.sample.raw) ||
-                                   (data.meta && data.meta.raw) ||
-                                   null;
+                    metarText = data.raw ||
+                               (data.results && data.results[0] && data.results[0].raw) ||
+                               (data.data && data.data.raw) ||
+                               (data.sample && data.sample.raw) ||
+                               (data.meta && data.meta.raw) ||
+                               null;
 
-                        if (metarText && !metarText.includes('ERROR')) {
-                            const reportedCode = metarText.substring(0, 4);
-                            console.log(`Got METAR from ${reportedCode} (requested ${airport}):`, metarText);
-                            break;
-                        }
-                    } catch (e) {
-                        console.log(`METAR request for ${airport} failed:`, e.message);
-                        continue;
+                    // Only accept KSUA data, reject other airports
+                    if (metarText && metarText.substring(0, 4) === 'KSUA') {
+                        console.log('Got KSUA METAR:', metarText);
+                    } else if (metarText) {
+                        console.log(`API returned ${metarText.substring(0, 4)} instead of KSUA - rejecting`);
+                        metarText = null;
                     }
+                } catch (e) {
+                    console.log('METAR fetch failed:', e.message);
                 }
 
+                // Display result
                 if (metarText) {
-                    const reportedCode = metarText.substring(0, 4);
-                    const airportName = AIRPORTS.find(ap => ap.code === reportedCode) ?
-                                       AIRPORTS.find(ap => ap.code === reportedCode).name : reportedCode;
-                    const aviationWeatherLink = `https://aviationweather.gov/data/metar/?decoded=1&ids=${reportedCode}`;
+                    const airportName = 'Witham Field';
                     metarDiv.innerHTML = `
                         <div style="font-size: 12px; color: #666; margin-bottom: 4px;">
-                            ${reportedCode} - ${airportName}
+                            KSUA - ${airportName}
                             <a href="${aviationWeatherLink}" target="_blank" style="margin-left: 8px; color: #0066cc; text-decoration: none; font-size: 10px;">View Full Data →</a>
                         </div>
                         ${metarText}
                     `;
-                    console.log('METAR displayed from:', reportedCode);
+                    console.log('KSUA METAR displayed');
                 } else {
-                    console.warn('METAR unavailable from all airports');
-                    metarDiv.innerHTML = '<a href="https://aviationweather.gov/data/metar/" target="_blank" style="color: #0066cc;">METAR unavailable - View aviationweather.gov</a>';
+                    console.warn('KSUA METAR not available from API');
+                    metarDiv.innerHTML = `
+                        <div style="color: #666;">
+                            KSUA - Witham Field
+                            <a href="${aviationWeatherLink}" target="_blank" style="margin-left: 8px; color: #0066cc; text-decoration: none; font-size: 11px; font-weight: bold;">Get Current METAR →</a>
+                        </div>
+                    `;
                 }
             } catch (e) {
                 console.error('METAR error:', e);
