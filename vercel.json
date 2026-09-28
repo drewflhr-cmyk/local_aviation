@@ -5,9 +5,5 @@
     "api/proxy.js": {
       "maxDuration": 30
     }
-  },
-  "static": {
-    "public": "public",
-    "/": "index.html"
   }
 }
