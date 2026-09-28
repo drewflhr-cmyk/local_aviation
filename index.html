@@ -393,6 +393,7 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/rainviewer-api/4.10.1/RainViewerAPI.min.js"></script>
     <script>
         const canvas = document.getElementById('radarCanvas');
         const ctx = canvas.getContext('2d');
@@ -470,6 +471,9 @@
                 maxZoom: 18
             }).addTo(map);
 
+            // Add weather radar layer
+            initWeatherRadar();
+
             L.circle([USER_LAT, USER_LON], {
                 radius: RADIUS_MILES * 1609.34, color: '#0066cc', fill: false, weight: 2, opacity: 0.5
             }).addTo(map);
@@ -482,6 +486,26 @@
             map.on('zoom pan', drawRadar);
 
             updateAirportMarkers();
+        }
+
+        let radarLayer = null;
+
+        function initWeatherRadar() {
+            // Initialize RainViewer weather radar
+            if (typeof RainViewerAPI !== 'undefined') {
+                RainViewerAPI.getRasterTiles('https://tiles.rainviewer.com/v2/radar', function(rasterUrl, timestamp) {
+                    if (radarLayer) map.removeLayer(radarLayer);
+
+                    radarLayer = L.tileLayer(rasterUrl, {
+                        tileSize: 256,
+                        opacity: 0.6,
+                        zIndex: 300,
+                        attribution: 'RainViewer'
+                    }).addTo(map);
+
+                    console.log('Weather radar loaded');
+                });
+            }
         }
 
         function updateAirportMarkers() {
@@ -780,45 +804,67 @@
 
         async function fetchMETAR() {
             try {
-                console.log('Fetching METAR...');
+                console.log('Fetching METAR for KSUA...');
 
-                // Try multiple airports in order of proximity/preference
-                const airports = ['KSUA', 'KTIX', 'KMCO', 'KPBI'];
                 let metarText = null;
-                let metarAirport = null;
 
-                for (let airport of airports) {
-                    try {
-                        const url = `https://avwx.rest/api/metar/${airport}?options=info,translate`;
-                        const response = await proxyFetch(url);
-                        const data = await response.json();
+                // Try KSUA first
+                try {
+                    const url = 'https://avwx.rest/api/metar/KSUA?options=info,translate';
+                    const response = await proxyFetch(url);
+                    const data = await response.json();
 
-                        // Try multiple possible field names
-                        metarText = data.raw ||
-                                   (data.results && data.results[0] && data.results[0].raw) ||
-                                   (data.data && data.data.raw) ||
-                                   (data.sample && data.sample.raw) ||
-                                   (data.meta && data.meta.raw) ||
-                                   null;
+                    // Try multiple possible field names
+                    metarText = data.raw ||
+                               (data.results && data.results[0] && data.results[0].raw) ||
+                               (data.data && data.data.raw) ||
+                               (data.sample && data.sample.raw) ||
+                               (data.meta && data.meta.raw) ||
+                               null;
 
-                        if (metarText && !metarText.includes('ERROR')) {
-                            metarAirport = airport;
-                            console.log(`Got METAR from ${airport}:`, metarText);
-                            break;
+                    // Verify it's actually KSUA
+                    if (metarText && metarText.substring(0, 4) === 'KSUA') {
+                        console.log('Got KSUA METAR:', metarText);
+                    } else if (metarText) {
+                        console.log('AVWX returned', metarText.substring(0, 4), 'instead of KSUA');
+                        metarText = null;
+                    }
+                } catch (e) {
+                    console.log('AVWX KSUA request failed:', e.message);
+                }
+
+                // Fallback to nearby airports if KSUA fails
+                if (!metarText) {
+                    const fallbacks = ['KTIX', 'KMCO', 'KPBI'];
+                    for (let airport of fallbacks) {
+                        try {
+                            const url = `https://avwx.rest/api/metar/${airport}?options=info,translate`;
+                            const response = await proxyFetch(url);
+                            const data = await response.json();
+
+                            metarText = data.raw ||
+                                       (data.results && data.results[0] && data.results[0].raw) ||
+                                       (data.data && data.data.raw) ||
+                                       (data.sample && data.sample.raw) ||
+                                       (data.meta && data.meta.raw) ||
+                                       null;
+
+                            if (metarText && !metarText.includes('ERROR')) {
+                                console.log(`Using fallback ${airport}:`, metarText);
+                                break;
+                            }
+                        } catch (e) {
+                            console.log(`Fallback ${airport} failed`);
                         }
-                    } catch (e) {
-                        console.log(`METAR request for ${airport} failed, trying next...`);
-                        continue;
                     }
                 }
 
                 if (metarText) {
-                    // Extract airport code from METAR text (first 4 characters)
                     const reportedCode = metarText.substring(0, 4);
                     metarDiv.innerHTML = `<div style="font-size: 12px; color: #666; margin-bottom: 4px;">${reportedCode}</div>${metarText}`;
                     console.log('METAR displayed from:', reportedCode);
                 } else {
-                    console.warn('METAR data not found from any airport');
+                    console.warn('METAR unavailable');
                     metarDiv.textContent = 'METAR unavailable';
                 }
             } catch (e) {
