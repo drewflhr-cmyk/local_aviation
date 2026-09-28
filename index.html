@@ -781,33 +781,44 @@
         async function fetchMETAR() {
             try {
                 console.log('Fetching METAR...');
-                const url = 'https://avwx.rest/api/metar/KSUA?options=info,translate';
 
-                const response = await proxyFetch(url);
-                const data = await response.json();
+                // Try multiple airports in order of proximity/preference
+                const airports = ['KSUA', 'KTIX', 'KMCO', 'KPBI'];
+                let metarText = null;
+                let metarAirport = null;
 
-                console.log('METAR response type:', typeof data);
-                console.log('METAR response keys:', Object.keys(data).join(', '));
-                for (let key in data) {
-                    console.log(`  ${key}:`, typeof data[key], data[key]);
+                for (let airport of airports) {
+                    try {
+                        const url = `https://avwx.rest/api/metar/${airport}?options=info,translate`;
+                        const response = await proxyFetch(url);
+                        const data = await response.json();
+
+                        // Try multiple possible field names
+                        metarText = data.raw ||
+                                   (data.results && data.results[0] && data.results[0].raw) ||
+                                   (data.data && data.data.raw) ||
+                                   (data.sample && data.sample.raw) ||
+                                   (data.meta && data.meta.raw) ||
+                                   null;
+
+                        if (metarText && !metarText.includes('ERROR')) {
+                            metarAirport = airport;
+                            console.log(`Got METAR from ${airport}:`, metarText);
+                            break;
+                        }
+                    } catch (e) {
+                        console.log(`METAR request for ${airport} failed, trying next...`);
+                        continue;
+                    }
                 }
 
-                // Try multiple possible field names
-                let metarText = data.raw ||
-                               (data.results && data.results[0] && data.results[0].raw) ||
-                               (data.data && data.data.raw) ||
-                               (data.sample && data.sample.raw) ||
-                               (data.meta && data.meta.raw) ||
-                               null;
-
                 if (metarText) {
-                    metarDiv.textContent = metarText;
-                    console.log('METAR displayed:', metarText);
-                } else if (data.error) {
-                    console.error('METAR API error:', data.error);
-                    metarDiv.textContent = `Error: ${data.error}`;
+                    // Extract airport code from METAR text (first 4 characters)
+                    const reportedCode = metarText.substring(0, 4);
+                    metarDiv.innerHTML = `<div style="font-size: 12px; color: #666; margin-bottom: 4px;">${reportedCode}</div>${metarText}`;
+                    console.log('METAR displayed from:', reportedCode);
                 } else {
-                    console.warn('METAR data not found in response');
+                    console.warn('METAR data not found from any airport');
                     metarDiv.textContent = 'METAR unavailable';
                 }
             } catch (e) {
