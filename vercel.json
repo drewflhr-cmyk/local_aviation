@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "buildCommand": "mkdir -p .vercel/output/static && cp -r public/* .vercel/output/static/ && cp index.html .vercel/output/static/",
-  "outputDirectory": ".vercel/output/static",
+  "buildCommand": "exit 0",
+  "outputDirectory": "public",
   "functions": {
     "api/proxy.js": {
       "maxDuration": 30
