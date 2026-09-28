@@ -183,6 +183,8 @@
             font-weight: 500;
             transition: background 0.2s;
             text-decoration: none;
+            border: none;
+            font-family: inherit;
         }
 
         .ksua-weather-link:hover {
@@ -385,14 +387,6 @@
         </div>
     </div>
 
-    <div class="modal" id="ksua-weather-modal">
-        <div class="modal-content">
-            <h3>KSUA Weather - Witham Field</h3>
-            <div id="ksua-metar-content" style="font-family: 'Courier New', monospace; font-size: 13px; background: #f5f5f5; padding: 1rem; border-radius: 6px; white-space: pre-wrap; word-break: break-word; margin-bottom: 1.5rem; min-height: 60px;"></div>
-            <a id="ksua-metar-link" href="#" target="_blank" style="display: block; padding: 10px; background: #0066cc; color: white; text-decoration: none; text-align: center; border-radius: 6px; margin-bottom: 1rem; font-weight: 500;">View Full Data on Aviation Weather →</a>
-            <button class="modal-close" onclick="document.getElementById('ksua-weather-modal').classList.remove('active')">Close</button>
-        </div>
-    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     <script>
@@ -407,6 +401,7 @@
         const airportModal = document.getElementById('airportModal');
         const statusDiv = document.getElementById('radarStatus');
         const locationStatus = document.getElementById('locationStatus');
+        const ksuaWeatherUrl = 'https://aviationweather.gov/data/metar/?decoded=1&ids=KSUA&taf=1';
 
         let USER_LAT = 27.248805;
         let USER_LON = -80.259035;
@@ -463,7 +458,6 @@
             updateAirportList();
             drawRadar();
             fetchAircraft();
-            fetchMETAR();
         }
 
         function initMap() {
@@ -607,7 +601,7 @@
 
                 ctx.fillStyle = '#00ff00';
                 ctx.beginPath();
-                ctx.rect(x - 9, y - 9, 18, 18);
+                ctx.rect(x - 9, y - 10, 18, 20);
                 ctx.fill();
 
                 ctx.strokeStyle = '#fff';
@@ -801,69 +795,12 @@
             airportModal.classList.add('active');
         }
 
-        async function fetchMETAR() {
-            try {
-                console.log('Fetching METAR for KSUA...');
-
-                let metarText = null;
-                const targetAirport = 'KSUA';
-                const aviationWeatherLink = `https://aviationweather.gov/data/metar/?decoded=1&ids=${targetAirport}`;
-
-                // Try to fetch KSUA specifically
-                try {
-                    const url = `https://avwx.rest/api/metar/${targetAirport}?options=info,translate`;
-                    const response = await proxyFetch(url);
-                    const data = await response.json();
-
-                    metarText = data.raw ||
-                               (data.results && data.results[0] && data.results[0].raw) ||
-                               (data.data && data.data.raw) ||
-                               (data.sample && data.sample.raw) ||
-                               (data.meta && data.meta.raw) ||
-                               null;
-
-                    // Only accept KSUA data, reject other airports
-                    if (metarText && metarText.substring(0, 4) === 'KSUA') {
-                        console.log('Got KSUA METAR:', metarText);
-                    } else if (metarText) {
-                        console.log(`API returned ${metarText.substring(0, 4)} instead of KSUA - rejecting`);
-                        metarText = null;
-                    }
-                } catch (e) {
-                    console.log('METAR fetch failed:', e.message);
-                }
-
-                // Store result for modal
-                if (metarText) {
-                    ksuaMetarData = metarText;
-                    console.log('KSUA METAR retrieved:', metarText);
-                } else {
-                    ksuaMetarData = null;
-                    console.warn('KSUA METAR not available from API');
-                }
-                ksuaWeatherLink = aviationWeatherLink;
-            } catch (e) {
-                console.error('METAR error:', e);
-                ksuaMetarData = null;
-            }
-        }
-
         function openKSUAWeather() {
-            const modal = document.getElementById('ksua-weather-modal');
-            const contentDiv = document.getElementById('ksua-metar-content');
-            const linkElement = document.getElementById('ksua-metar-link');
-
-            // Set the link
-            linkElement.href = ksuaWeatherLink;
-
-            // Display METAR data or placeholder
-            if (ksuaMetarData) {
-                contentDiv.textContent = ksuaMetarData;
-            } else {
-                contentDiv.textContent = 'METAR data not currently available from API.\nPlease check the link below for live data.';
+            // Try to open in a popup window, fall back to opening in new tab if popup is blocked
+            const popup = window.open(ksuaWeatherUrl, 'KSUA_Weather', 'width=1000,height=800');
+            if (!popup) {
+                window.open(ksuaWeatherUrl, '_blank');
             }
-
-            modal.classList.add('active');
         }
 
         canvas.addEventListener('click', (e) => {
@@ -900,11 +837,9 @@
         resizeCanvas();
         updateAirportList();
         fetchAircraft();
-        fetchMETAR();
 
-        // Refresh aircraft every 10 seconds, METAR every 10 minutes
+        // Refresh aircraft every 10 seconds
         setInterval(fetchAircraft, 10000);
-        setInterval(fetchMETAR, 600000);
 
         console.log('Radar ready - using adsb.lol API');
     </script>
