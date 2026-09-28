@@ -899,24 +899,12 @@
             const ap = AIRPORTS.find(a => a.code === code);
             if (!ap) return;
 
-            document.getElementById('airportName').textContent = `${ap.code} - ${ap.name}`;
-            document.getElementById('airportTable').innerHTML = '';
-
-            // Show diagram/photo link directly
-            let diagLinks = '';
-
+            // Directly open the diagram if available
             if (airportDiagrams[code]) {
                 const ext = airportDiagrams[code];
-                const displayName = ext === 'jpg' ? 'Airport Photo' : 'Diagram';
-                const rawUrl = `https://raw.githubusercontent.com/drewflhr-cmyk/local_aviation/main/public/images/airports/${code}.${ext}`;
-                diagLinks = `<a href="${rawUrl}" target="_blank">${displayName}</a>`;
-            } else {
-                diagLinks = '<p style="color: #999; text-align: center;">No diagram available</p>';
+                const diagramUrl = `/images/airports/${code}.${ext}`;
+                window.open(diagramUrl, '_blank');
             }
-
-            document.getElementById('diagramLinks').innerHTML = diagLinks;
-
-            airportModal.classList.add('active');
         }
 
         function openKSUAWeather() {
