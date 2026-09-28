@@ -885,6 +885,16 @@
             detailModal.classList.add('active');
         }
 
+        // Map of airport codes to their diagram/photo file extensions
+        const airportDiagrams = {
+            'BCT': 'pdf',
+            'OBK': 'jpg',
+            'PBI': 'pdf',
+            'SUA': 'pdf',
+            'VRB': 'pdf',
+            'X21': 'pdf'
+        };
+
         function showAirportDetail(code) {
             const ap = AIRPORTS.find(a => a.code === code);
             if (!ap) return;
@@ -902,8 +912,18 @@
             `;
             document.getElementById('airportTable').innerHTML = rows;
 
-            const diagLinks = `
-                <strong style="display: block; margin-bottom: 10px; text-align: center;">Airport Diagrams & Info:</strong>
+            // Build diagram links
+            let diagLinks = `<strong style="display: block; margin-bottom: 10px; text-align: center;">Airport Diagrams & Info:</strong>`;
+
+            // Add local diagram/photo if available
+            if (airportDiagrams[code]) {
+                const ext = airportDiagrams[code];
+                const displayName = ext === 'jpg' ? 'Airport Photo' : 'Diagram';
+                diagLinks += `<a href="/images/airports/${code}.${ext}" target="_blank">${displayName}</a>`;
+            }
+
+            // Add external links
+            diagLinks += `
                 <a href="https://www.airnav.com/airport/${code}" target="_blank">AirNav</a>
                 <a href="https://skyvector.com/?ll=${ap.lat},${ap.lon}&chart=301&zoom=2" target="_blank">SkyVector (VFR)</a>
                 <a href="https://maps.google.com/?q=${ap.lat},${ap.lon}" target="_blank">Google Maps</a>
