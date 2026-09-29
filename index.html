@@ -390,6 +390,10 @@
                 <div class="radar-status" id="radarStatus">Loading…</div>
             </div>
 
+            <div style="margin-top: 1rem; margin-bottom: 1rem; text-align: center;">
+                <a href="https://www.flightaware.com" target="_blank" style="display: inline-block; padding: 12px 20px; background: #ff6600; color: white; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 13px; transition: background 0.2s;" onmouseover="this.style.background='#e65a00'" onmouseout="this.style.background='#ff6600'">Flight Tracking and Information</a>
+            </div>
+
             <div class="sidebar">
                 <div class="panel">
                     <div class="panel-title">
@@ -877,12 +881,12 @@
                 // Add KSUA buttons after SUA airport
                 if (ap.code === 'SUA') {
                     html += `<div class="ksua-live-atc-link" onclick="openLiveATC()">Stuart Ground/Tower</div>`;
+                    html += `<div class="ksua-live-atc-link" onclick="openPBIDeparture()">Palm Beach DEP</div>`;
                     html += `<div class="ksua-weather-link" onclick="openKSUAWeather()">KSUA Weather</div>`;
                 }
                 // Add PBI buttons after PBI airport
                 if (ap.code === 'PBI') {
                     html += `<div class="ksua-live-atc-link" onclick="openPBITower()">PBI Tower</div>`;
-                    html += `<div class="ksua-live-atc-link" onclick="openPBIDeparture()">Palm Beach DEP</div>`;
                 }
             });
             document.getElementById('airportList').innerHTML = html;
