@@ -161,6 +161,16 @@
             background: #f0f0f0;
         }
 
+        .aircraft-item.tracked {
+            background: #ffebee;
+            border-left: 3px solid #d32f2f;
+            padding-left: 5px;
+        }
+
+        .aircraft-item.tracked strong {
+            color: #d32f2f;
+        }
+
         .aircraft-item strong, .airport-item strong {
             display: block;
             color: #1a1a1a;
@@ -457,6 +467,11 @@
         const RADIUS_MILES = 50;
         const NM_TO_MILES = 1.15078; // Convert nautical miles to statute miles
 
+        // Aircraft tracking
+        const TRACKED_AIRCRAFT = 'N42675';
+        const NTFY_URL = 'https://ntfy.sh/n42675';
+        let notifiedAircraft = {}; // Track which aircraft we've already notified about
+
         // Vercel backend proxy URL - replace with your Vercel project URL
         const BACKEND_URL = 'https://local-aviation.vercel.app/api/proxy?url=';
         const IS_CONFIGURED = BACKEND_URL.includes('YOUR_VERCEL_PROJECT') === false;
@@ -620,7 +635,18 @@
                     return;
                 }
 
-                ctx.fillStyle = hoveredAircraft === idx ? '#ffff00' : '#00ffff';
+                // Check if this is the tracked aircraft
+                const isTracked = ac.registration === TRACKED_AIRCRAFT;
+
+                // Determine color: red for tracked, yellow for hovered, cyan for normal
+                if (isTracked) {
+                    ctx.fillStyle = '#ff0000'; // Red for tracked aircraft
+                } else if (hoveredAircraft === idx) {
+                    ctx.fillStyle = '#ffff00'; // Yellow for hovered
+                } else {
+                    ctx.fillStyle = '#00ffff'; // Cyan for normal
+                }
+
                 ctx.beginPath();
                 ctx.arc(x, y, 10, 0, Math.PI * 2);
                 ctx.fill();
@@ -781,6 +807,26 @@
             }
         }
 
+        // Send notification via ntfy
+        async function sendNtfyNotification(message) {
+            try {
+                const response = await fetch(NTFY_URL, {
+                    method: 'POST',
+                    body: message,
+                    headers: {
+                        'Content-Type': 'text/plain'
+                    }
+                });
+                if (response.ok) {
+                    console.log('Ntfy notification sent:', message);
+                } else {
+                    console.error('Ntfy error:', response.status);
+                }
+            } catch (e) {
+                console.error('Ntfy fetch error:', e.message);
+            }
+        }
+
         // Use OpenSky Network API
         async function fetchAircraft() {
             try {
@@ -827,6 +873,17 @@
                 // Sort by distance
                 aircraft.sort((a, b) => a.distance - b.distance);
 
+                // Check for tracked aircraft and send notification
+                const trackedFound = aircraft.find(ac => ac.registration === TRACKED_AIRCRAFT);
+                if (trackedFound && !notifiedAircraft[TRACKED_AIRCRAFT]) {
+                    sendNtfyNotification(`${TRACKED_AIRCRAFT} is in the air`);
+                    notifiedAircraft[TRACKED_AIRCRAFT] = true;
+                }
+                // Clear notification flag if tracked aircraft is no longer detected
+                if (!trackedFound) {
+                    notifiedAircraft[TRACKED_AIRCRAFT] = false;
+                }
+
                 console.log('Filtered aircraft:', aircraft.length);
                 updateAircraftList();
                 drawRadar();
@@ -846,8 +903,11 @@
             if (sorted.length === 0) {
                 aircraftListDiv.innerHTML = '<p style="color: #999; margin: 0;">No aircraft nearby</p>';
             } else {
-                aircraftListDiv.innerHTML = sorted.map((ac, idx) => `
-                    <div class="aircraft-item"
+                aircraftListDiv.innerHTML = sorted.map((ac, idx) => {
+                    const isTracked = ac.registration === TRACKED_AIRCRAFT;
+                    const trackedClass = isTracked ? 'tracked' : '';
+                    return `
+                    <div class="aircraft-item ${trackedClass}"
                          onmouseover="hoveredAircraft = ${idx}; drawRadar();"
                          onmouseout="hoveredAircraft = null; drawRadar();"
                          onclick="showAircraftDetail(${idx});">
@@ -859,7 +919,8 @@
                             ${ac.verticalRate ? (ac.verticalRate > 0 ? '↑' : '↓') + Math.abs(Math.round(ac.verticalRate)) : '—'} ft/m
                         </div>
                     </div>
-                `).join('');
+                `;
+                }).join('');
             }
         }
 
