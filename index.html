@@ -105,6 +105,17 @@
             display: block;
             transition: transform 0.4s;
         }
+        .map-arrow-label {
+    position: absolute;
+    top: -15px;               /* sits just above the circle */
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: #fff;
+    text-shadow: 0 0 3px #000, 0 0 3px #000;   /* dark outline so it reads on any background */
+}
 
         #northArrow { top: 44px; right: 12px; }      /* just under the "Radar: Live" box */
         #windArrow  { bottom: 28px; right: 12px; }   /* bottom right, above the map credit line */
@@ -505,6 +516,7 @@
                 </div>
                 <!-- Live wind arrow (KSUA): points the way the wind is blowing toward -->
                 <div class="map-arrow" id="windArrow" title="Wind" style="display:none">
+                    <span class="map-arrow-label">wind</span>
                     <svg viewBox="0 0 40 40" id="windArrowSvg"><g fill="#0066cc" stroke="#0066cc" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="20" y1="32" x2="20" y2="12"/><polygon points="20,5 12,18 28,18"/></g></svg>
                 </div>
             </div>
