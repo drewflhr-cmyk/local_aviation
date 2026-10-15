@@ -487,7 +487,6 @@
             </div>
             <div class="track-center">
             <a href="https://www.flightaware.com" target="_blank" style="display: inline-block; padding: 12px 20px; background: #ff6600; color: white; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 13px; transition: background 0.2s;" onmouseover="this.style.background='#e65a00'" onmouseout="this.style.background='#ff6600'">Flight Tracking and Information</a>
-            <div style="font-size: 11px; color: #999; margin-top: 0.3rem;">Opens Flightaware in a separate window. Copy the aircraft identifier, then click the button above and paste into the search box.</div>
             </div>
             <div class="wx wx-right" title="KSUA temperature and dew point (METAR)">
                 <div id="wxTemp">Temp --</div>
@@ -592,7 +591,7 @@
 
         const AIRPORTS = [
             { code: 'SUA', name: 'Witham Field', lat: 27.1817, lon: -80.2211, runways: '09/27' },
-            { code: 'X21', name: 'Treasure Coast Intl', lat: 27.495, lon: -80.368, runways: '09/27, 18/36' },
+            { code: 'KFPR', name: 'Treasure Coast Intl', lat: 27.495, lon: -80.368, runways: '09/27, 18/36' },
             { code: 'OBK', name: 'Okeechobee County', lat: 27.266, lon: -80.851, runways: '09/27' },
             { code: 'VRB', name: 'Vero Beach Regional', lat: 27.656, lon: -80.418, runways: '09/27, 16/34' },
             { code: 'PBI', name: 'Palm Beach Intl', lat: 26.683, lon: -80.096, runways: '09L/27R, 09R/27L' },
@@ -703,8 +702,8 @@
         function addAirways() {
             Object.keys(AIRWAYS).forEach(name => {
                 const pts = AIRWAYS[name];
-                L.polyline(pts, { color: '#000', weight: 4, opacity: 0.35, interactive: false }).addTo(map);
-                L.polyline(pts, { color: '#b0b0b0', weight: 2, opacity: 0.95, interactive: false }).addTo(map);
+                L.polyline(pts, { color: '#000', weight: 6, opacity: 0.35, interactive: false }).addTo(map);
+                L.polyline(pts, { color: '#b0b0b0', weight: 3.5, opacity: 0.95, interactive: false }).addTo(map);
                 // Label near the middle of the route that is closest to home
                 let best = pts[0], bestD = 1e9;
                 pts.forEach(p => {
@@ -854,7 +853,7 @@
                 ctx.font = 'bold 11px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(ap.code.substring(0, 3), x, y);
+                ctx.fillText(ap.code.length === 4 && ap.code[0] === 'K' ? ap.code.substring(1) : ap.code.substring(0, 3), x, y);
             });
         }
 
@@ -1184,6 +1183,14 @@
                     html += `<div class="ksua-live-atc-link" onclick="openPBIDeparture()">Palm Beach DEP</div>`;
                     html += `<div class="ksua-weather-link" onclick="openKSUAWeather()">KSUA Weather</div>`;
                 }
+                // Add Vero Tower button after VRB airport
+                if (ap.code === 'VRB') {
+                    html += `<div class="ksua-live-atc-link" onclick="openVeroTower()">Vero Tower</div>`;
+                }
+                // Add KFPR Tower button after KFPR airport
+                if (ap.code === 'KFPR') {
+                    html += `<div class="ksua-live-atc-link" onclick="openKFPRTower()">KFPR Tower</div>`;
+                }
                 // Add PBI buttons after PBI airport
                 if (ap.code === 'PBI') {
                     html += `<div class="ksua-live-atc-link" onclick="openPBITower()">PBI Tower</div>`;
@@ -1223,8 +1230,11 @@
             'PBI': 'pdf',
             'SUA': 'pdf',
             'VRB': 'pdf',
-            'X21': 'pdf'
+            'KFPR': 'pdf'
         };
+
+        // The saved diagram file for KFPR is still named X21.pdf
+        const diagramFileNames = { 'KFPR': 'X21' };
 
         function showAirportDetail(code) {
             const ap = AIRPORTS.find(a => a.code === code);
@@ -1233,7 +1243,7 @@
             // Directly open the diagram if available
             if (airportDiagrams[code]) {
                 const ext = airportDiagrams[code];
-                const diagramUrl = `https://cdn.jsdelivr.net/gh/drewflhr-cmyk/local_aviation@main/public/images/airports/${code}.${ext}`;
+                const diagramUrl = `https://cdn.jsdelivr.net/gh/drewflhr-cmyk/local_aviation@main/public/images/airports/${diagramFileNames[code] || code}.${ext}`;
                 window.open(diagramUrl, '_blank');
             }
         }
@@ -1246,6 +1256,16 @@
         function openPBITower() {
             // Open PBI Tower LiveATC link in a new tab
             window.open('https://www.liveatc.net/hlisten.php?mount=kpbi2_twr&icao=kdjt', '_blank');
+        }
+
+        function openVeroTower() {
+            // Open Vero Beach Tower LiveATC link in a new tab
+            window.open('https://www.liveatc.net/hlisten.php?mount=kvrb_twr&icao=kvrb', '_blank');
+        }
+
+        function openKFPRTower() {
+            // Open Fort Pierce Ground/Tower LiveATC link in a new tab
+            window.open('https://www.liveatc.net/hlisten.php?mount=kfpr3_gnd_twr&icao=kfpr', '_blank');
         }
 
         function openPBIDeparture() {
