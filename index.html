@@ -36,6 +36,91 @@
             color: #1a1a1a;
         }
 
+        /* Title line: title on the left, clock (local + UTC) on the right, same font size */
+        .title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            column-gap: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .title-row h1 {
+            margin-bottom: 0;
+        }
+
+        .clock {
+            font-size: 28px;
+            font-weight: 600;
+            color: #1a1a1a;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Weather row: wind (left) | Flight Tracking button (center) | temp + dew point (right) */
+        .track-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin: 0.1rem 0;
+        }
+
+        .track-center {
+            flex: 1;
+            text-align: center;
+            min-width: 0;
+        }
+
+        .wx {
+            flex: 0 0 auto;
+            width: 120px;
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 1.5;
+            color: #1a1a1a;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .wx.wx-left { text-align: left; }
+        .wx.wx-right { text-align: right; }
+
+        /* Reference arrows sitting on top of the map */
+        .map-arrow {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 0 3px rgba(0,0,0,0.5);
+            z-index: 500;
+            pointer-events: none;
+        }
+
+        .map-arrow svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+            transition: transform 0.4s;
+        }
+
+        #northArrow { top: 44px; right: 12px; }      /* just under the "Radar: Live" box */
+        #windArrow  { bottom: 28px; right: 12px; }   /* bottom right, above the map credit line */
+
+        .airway-label {
+            background: rgba(0,0,0,0.55);
+            border: none;
+            color: #d0d0d0;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 1px 4px;
+            box-shadow: none;
+        }
+
+        .airway-label::before { display: none; }
+
         .location-input {
             margin-bottom: 1.5rem;
             font-size: 12px;
@@ -362,7 +447,15 @@
 
             h1 {
                 font-size: 22px;
-                margin-bottom: 1rem;
+            }
+
+            .clock {
+                font-size: 22px;
+            }
+
+            .wx {
+                width: 90px;
+                font-size: 12px;
             }
 
             .sidebar {
@@ -378,15 +471,28 @@
 </head>
 <body>
     <div class="container">
-        <h1>Local Aviation Radar</h1>
+        <div class="title-row">
+            <h1>Local Aviation Radar</h1>
+            <div class="clock" id="clock" title="Local time (UTC time)">--:-- (--:--Z)</div>
+        </div>
 
         <div id="sigmetPanel" style="margin-bottom: 1rem; padding: 0.75rem; background: #fff; border-radius: 8px; border: 1px solid #e0e0e0; font-size: 12px; color: #666; overflow: hidden;">
             <div id="sigmetDisplay" style="white-space: nowrap; overflow-x: auto; font-size: 12px;">SIGMETs: loading...</div>
         </div>
 
-        <div style="margin-top: 0.1rem; margin-bottom: 0.1rem; text-align: center;">
+        <div class="track-row">
+            <div class="wx wx-left" title="KSUA wind (METAR)">
+                <div id="wxSpeed">Wind --</div>
+                <div id="wxDir">Dir --</div>
+            </div>
+            <div class="track-center">
             <a href="https://www.flightaware.com" target="_blank" style="display: inline-block; padding: 12px 20px; background: #ff6600; color: white; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 13px; transition: background 0.2s;" onmouseover="this.style.background='#e65a00'" onmouseout="this.style.background='#ff6600'">Flight Tracking and Information</a>
             <div style="font-size: 11px; color: #999; margin-top: 0.3rem;">Opens Flightaware in a separate window. Copy the aircraft identifier, then click the button above and paste into the search box.</div>
+            </div>
+            <div class="wx wx-right" title="KSUA temperature and dew point (METAR)">
+                <div id="wxTemp">Temp --</div>
+                <div id="wxDew">Dew pt --</div>
+            </div>
         </div>
 
         <div class="radar-section">
@@ -394,6 +500,14 @@
                 <div id="mapContainer"></div>
                 <canvas id="radarCanvas"></canvas>
                 <div class="radar-status" id="radarStatus">Loading…</div>
+                <!-- Fixed arrow: always points 30 degrees clockwise from north -->
+                <div class="map-arrow" id="northArrow" title="Fixed reference arrow, 30° from north">
+                    <svg viewBox="0 0 40 40" style="transform: rotate(30deg)"><g fill="#000" stroke="#000" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="20" y1="32" x2="20" y2="12"/><polygon points="20,5 12,18 28,18"/></g></svg>
+                </div>
+                <!-- Live wind arrow (KSUA): points the way the wind is blowing toward -->
+                <div class="map-arrow" id="windArrow" title="Wind" style="display:none">
+                    <svg viewBox="0 0 40 40" id="windArrowSvg"><g fill="#0066cc" stroke="#0066cc" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="20" y1="32" x2="20" y2="12"/><polygon points="20,5 12,18 28,18"/></g></svg>
+                </div>
             </div>
 
             <div class="sidebar">
@@ -485,6 +599,39 @@
             { code: 'BCT', name: 'Boca Raton', lat: 26.379, lon: -80.108, runways: '09/27' },
         ];
 
+        // Aircraft sitting on the ground longer than this are dropped from the list and map
+        const GROUND_HIDE_MS = 60 * 1000;
+        const groundSince = {};   // icao hex -> time we first saw it on the ground
+
+        // KSUA weather (wind, temperature, dew point) comes from its METAR
+        const WIND_STATION = 'KSUA';
+        const WIND_ARROW_POINTS_DOWNWIND = true;  // true = arrow points where the wind is blowing TO
+
+        // Airways drawn in grey on the map (fix-to-fix positions from the FAA's published airway data).
+        // Each list is [latitude, longitude] pairs, in order along the route.
+        const AIRWAYS = {
+            'V3': [
+                [25.800, -80.349], [25.871, -80.301], [25.943, -80.254], [26.014, -80.206], [26.074, -80.166],
+                [26.157, -80.156], [26.239, -80.145], [26.322, -80.134], [26.405, -80.123], [26.488, -80.112],
+                [26.570, -80.101], [26.653, -80.090], [26.680, -80.086],
+                [26.759, -80.118], [26.837, -80.149], [26.915, -80.181], [26.960, -80.199],
+                [27.039, -80.230], [27.117, -80.262], [27.193, -80.293],
+                [27.272, -80.322], [27.351, -80.352], [27.430, -80.381], [27.509, -80.411], [27.588, -80.440],
+                [27.667, -80.470], [27.746, -80.500], [27.825, -80.529], [27.904, -80.559], [27.983, -80.589],
+                [28.062, -80.619], [28.105, -80.635],
+                [28.184, -80.666], [28.263, -80.697], [28.341, -80.729], [28.420, -80.760], [28.435, -80.765],
+                [28.513, -80.797], [28.517, -80.798]
+            ],
+            'V492': [
+                [26.680, -80.086], [26.763, -80.093], [26.846, -80.099], [26.929, -80.106], [26.992, -80.111],
+                [27.075, -80.117], [27.158, -80.124], [27.241, -80.130], [27.253, -80.131],
+                [27.336, -80.138], [27.419, -80.145], [27.468, -80.148],
+                [27.537, -80.201], [27.606, -80.253], [27.608, -80.255],
+                [27.677, -80.307], [27.746, -80.360], [27.815, -80.413], [27.884, -80.465], [27.953, -80.518],
+                [28.022, -80.571], [28.091, -80.624], [28.105, -80.635]
+            ]
+        };
+
         let aircraft = [];
         let hoveredAircraft = null;
         let map = null;
@@ -543,10 +690,30 @@
                 radius: 6, color: '#0066cc', fill: true, fillColor: '#0066cc', weight: 2
             }).addTo(map);
 
+            addAirways();
+
             // Redraw canvas when map changes
             map.on('zoom pan', drawRadar);
 
             updateAirportMarkers();
+        }
+
+        // Draws each airway as a grey line (with a thin dark edge so it shows on the satellite picture).
+        // They are Leaflet map layers, so they move and zoom together with the map.
+        function addAirways() {
+            Object.keys(AIRWAYS).forEach(name => {
+                const pts = AIRWAYS[name];
+                L.polyline(pts, { color: '#000', weight: 4, opacity: 0.35, interactive: false }).addTo(map);
+                L.polyline(pts, { color: '#b0b0b0', weight: 2, opacity: 0.95, interactive: false }).addTo(map);
+                // Label near the middle of the route that is closest to home
+                let best = pts[0], bestD = 1e9;
+                pts.forEach(p => {
+                    const d = Math.hypot(p[0] - USER_LAT, (p[1] - USER_LON) * Math.cos(USER_LAT * Math.PI / 180));
+                    if (d < bestD) { bestD = d; best = p; }
+                });
+                L.tooltip({ permanent: true, direction: 'right', offset: [4, 0], className: 'airway-label' })
+                    .setLatLng(best).setContent(name).addTo(map);
+            });
         }
 
         let radarLayer = null;
@@ -870,6 +1037,20 @@
                     };
                 }).filter(ac => ac.latitude && ac.longitude);
 
+                // Drop aircraft that have been sitting on the ground for more than a minute
+                const nowMs = Date.now();
+                const seenNow = {};
+                aircraft = aircraft.filter(ac => {
+                    if (ac.altitude !== 'ground') {
+                        return true;                                   // airborne: keep, and forget any ground timer
+                    }
+                    seenNow[ac.icao] = true;
+                    if (!groundSince[ac.icao]) groundSince[ac.icao] = nowMs;   // first time we saw it on the ground
+                    if (ac.registration === TRACKED_AIRCRAFT) return true;     // never hide the watched aircraft
+                    return nowMs - groundSince[ac.icao] < GROUND_HIDE_MS;
+                });
+                Object.keys(groundSince).forEach(hex => { if (!seenNow[hex]) delete groundSince[hex]; });
+
                 // Sort by distance
                 aircraft.sort((a, b) => a.distance - b.distance);
 
@@ -894,6 +1075,63 @@
                 statusDiv.textContent = 'Aircraft: Error';
                 statusDiv.style.background = 'rgba(150,0,0,0.7)';
                 aircraftListDiv.innerHTML = '<p class="error-text">Error loading aircraft data</p>';
+            }
+        }
+
+        // ---------- Clock: local time, then UTC in parentheses ----------
+        function updateClock() {
+            const d = new Date();
+            const p2 = n => String(n).padStart(2, '0');
+            document.getElementById('clock').textContent =
+                `${p2(d.getHours())}:${p2(d.getMinutes())} (${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())}Z)`;
+        }
+
+        // ---------- KSUA weather: wind, temperature, dew point ----------
+        async function fetchWeather() {
+            try {
+                const url = `https://aviationweather.gov/api/data/metar?format=json&ids=${WIND_STATION}`;
+                const response = await proxyFetch(url);
+                const data = await response.json();
+                if (!Array.isArray(data) || data.length === 0) return;
+                const m = data[0];
+                ksuaMetarData = m;
+
+                // Wind: speed on top, direction below
+                const kts = m.wspd;
+                const gust = m.wgst;
+                const variable = (typeof m.wdir === 'string');          // "VRB"
+                const dir = (typeof m.wdir === 'number') ? m.wdir % 360 : null;
+                let speedText = 'Wind --', dirText = 'Dir --', showArrow = false;
+                if (kts === 0) {
+                    speedText = 'Wind calm';
+                } else if (typeof kts === 'number') {
+                    speedText = 'Wind ' + kts + (gust > kts ? 'G' + gust : '') + ' kt';
+                    if (variable) {
+                        dirText = 'Dir VRB';
+                    } else if (dir !== null) {
+                        dirText = 'Dir ' + String(dir).padStart(3, '0') + '°';
+                        showArrow = true;
+                    }
+                }
+                document.getElementById('wxSpeed').textContent = speedText;
+                document.getElementById('wxDir').textContent = dirText;
+
+                // Wind arrow on the map (the reported direction is where the wind comes FROM)
+                const arrowBox = document.getElementById('windArrow');
+                if (showArrow) {
+                    const toward = WIND_ARROW_POINTS_DOWNWIND ? (dir + 180) % 360 : dir;
+                    document.getElementById('windArrowSvg').style.transform = `rotate(${toward}deg)`;
+                    arrowBox.style.display = 'block';
+                } else {
+                    arrowBox.style.display = 'none';
+                }
+
+                // Temperature and dew point (the METAR gives degrees C)
+                const toF = c => Math.round(c * 9 / 5 + 32);
+                document.getElementById('wxTemp').textContent = typeof m.temp === 'number' ? 'Temp ' + toF(m.temp) + '°F' : 'Temp --';
+                document.getElementById('wxDew').textContent = typeof m.dewp === 'number' ? 'Dew pt ' + toF(m.dewp) + '°F' : 'Dew pt --';
+            } catch (e) {
+                console.log('Weather fetch error:', e.message);   // keep showing the last values
             }
         }
 
@@ -1058,10 +1296,14 @@
         updateAirportList();
         fetchAircraft();
         fetchSigmets();
+        fetchWeather();
+        updateClock();
 
-        // Refresh aircraft every 10 seconds, SIGMETs every 5 minutes
+        // Refresh aircraft every 10 seconds, SIGMETs every 5 minutes, weather every 10 minutes
         setInterval(fetchAircraft, 10000);
         setInterval(fetchSigmets, 5 * 60 * 1000);
+        setInterval(fetchWeather, 10 * 60 * 1000);
+        setInterval(updateClock, 1000);
 
         console.log('Radar ready - using adsb.lol API');
     </script>
