@@ -1249,21 +1249,21 @@
                 `;
                 // Add KSUA buttons after SUA airport
                 if (ap.code === 'SUA') {
-                    html += `<div class="ksua-live-atc-link" onclick="openLiveATC()">Stuart Ground/Tower</div>`;
-                    html += `<div class="ksua-live-atc-link" onclick="openPBIDeparture()">Palm Beach DEP</div>`;
-                    html += `<div class="ksua-weather-link" onclick="openKSUAWeather()">KSUA Weather</div>`;
+                    html += `<div class="ksua-live-atc-link" onclick="openLiveATC()">Stuart Ground/Tower Radio</div>`;
+                    html += `<div class="ksua-live-atc-link" onclick="openPBIDeparture()">Palm Beach Departure Radio</div>`;
+                    html += `<div class="ksua-weather-link" onclick="openKSUAWeather()">KSUA Weather METAR/TAF</div>`;
                 }
                 // Add Vero Tower button after VRB airport
                 if (ap.code === 'VRB') {
-                    html += `<div class="ksua-live-atc-link" onclick="openVeroTower()">Vero Tower</div>`;
+                    html += `<div class="ksua-live-atc-link" onclick="openVeroTower()">Vero Control Tower Radio</div>`;
                 }
                 // Add KFPR Tower button after KFPR airport
                 if (ap.code === 'KFPR') {
-                    html += `<div class="ksua-live-atc-link" onclick="openKFPRTower()">KFPR Tower</div>`;
+                    html += `<div class="ksua-live-atc-link" onclick="openKFPRTower()">KFPR COntrol Tower radio</div>`;
                 }
                 // Add PBI buttons after PBI airport
                 if (ap.code === 'PBI') {
-                    html += `<div class="ksua-live-atc-link" onclick="openPBITower()">PBI Tower</div>`;
+                    html += `<div class="ksua-live-atc-link" onclick="openPBITower()">PBI Control Tower Radio</div>`;
                 }
                 // Add separator after airport group
                 html += `<div class="airport-separator"></div>`;
