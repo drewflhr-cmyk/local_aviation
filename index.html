@@ -1155,6 +1155,53 @@
                 `${p2(d.getHours())}:${p2(d.getMinutes())} (${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())}Z)`;
         }
 
+        // ---------- Generate SVG wind barb based on speed in knots ----------
+        // Wind barbs show direction (staff) and speed (barbs/feathers)
+        // 50 kt = triangle, 10 kt = long line, 5 kt = short line (combinations add up)
+        function generateWindBarbSvg(windSpeedKts) {
+            // Build the barb pattern from wind speed
+            let barbs = [];
+            let remaining = windSpeedKts;
+
+            // 50-knot triangles (pennants)
+            while (remaining >= 50) {
+                barbs.push('triangle');
+                remaining -= 50;
+            }
+            // 10-knot long barbs
+            while (remaining >= 10) {
+                barbs.push('long');
+                remaining -= 10;
+            }
+            // 5-knot short barbs
+            while (remaining >= 5) {
+                barbs.push('short');
+                remaining -= 5;
+            }
+
+            // Build SVG: staff is the main vertical line, barbs branch off at angle
+            let burbMarkup = '<g fill="none" stroke="#0066cc" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">';
+            burbMarkup += '<line x1="20" y1="32" x2="20" y2="8"/>';  // main staff
+
+            // Draw barbs on the right side of staff (at 45-degree angle, angled back)
+            barbs.forEach((barb, idx) => {
+                const yPos = 32 - (idx * 3.5); // space them down the staff
+                if (barb === 'triangle') {
+                    // 50kt triangle (filled)
+                    burbMarkup += `<polygon points="20,${yPos} 26,${yPos-4} 26,${yPos+4}" fill="#0066cc"/>`;
+                } else if (barb === 'long') {
+                    // 10kt long barb (30 degrees angle)
+                    burbMarkup += `<line x1="20" y1="${yPos}" x2="26" y2="${yPos-4}"/>`;
+                } else if (barb === 'short') {
+                    // 5kt short barb (30 degrees angle, shorter)
+                    burbMarkup += `<line x1="20" y1="${yPos}" x2="23" y2="${yPos-2}"/>`;
+                }
+            });
+
+            burbMarkup += '</g>';
+            return burbMarkup;
+        }
+
         // ---------- KSUA weather: wind, temperature, dew point ----------
         async function fetchWeather() {
             try {
@@ -1185,10 +1232,12 @@
                 document.getElementById('wxSpeed').textContent = speedText;
                 document.getElementById('wxDir').textContent = dirText;
 
-                // Wind arrow on the map (the reported direction is where the wind comes FROM)
+                // Wind barb on the map (shows direction + speed with feathers)
                 const arrowBox = document.getElementById('windArrow');
-                if (showArrow) {
+                if (showArrow && typeof kts === 'number') {
                     const toward = WIND_ARROW_POINTS_DOWNWIND ? (dir + 180) % 360 : dir;
+                    // Replace arrow SVG with wind barb (barbs indicate speed)
+                    document.getElementById('windArrowSvg').innerHTML = generateWindBarbSvg(kts);
                     document.getElementById('windArrowSvg').style.transform = `rotate(${toward}deg)`;
                     arrowBox.style.display = 'block';
                 } else {
