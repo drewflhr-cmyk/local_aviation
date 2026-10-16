@@ -609,6 +609,10 @@
         const NTFY_URL = 'https://ntfy.sh/n42675';
         let notifiedAircraft = {}; // Track which aircraft we've already notified about
 
+        // Radar sweep animation
+        const RADAR_SWEEP_TIME_MS = 10000; // 10 seconds for full rotation (adjust this to change speed)
+        let radarSweepAngle = 0;
+
         // Vercel backend proxy URL - replace with your Vercel project URL
         const BACKEND_URL = 'https://local-aviation.vercel.app/api/proxy?url=';
         const IS_CONFIGURED = BACKEND_URL.includes('YOUR_VERCEL_PROJECT') === false;
@@ -767,6 +771,47 @@
             drawRadar();
         }
 
+        function drawRadarSweep(centerX, centerY, pxPerMile) {
+            const maxRadius = RADIUS_MILES * pxPerMile;
+
+            // Update sweep angle (convert ms to degrees: 360 degrees / RADAR_SWEEP_TIME_MS)
+            radarSweepAngle = (Date.now() % RADAR_SWEEP_TIME_MS) / RADAR_SWEEP_TIME_MS * 360;
+            const rad = (radarSweepAngle - 90) * Math.PI / 180; // -90 to start at top
+
+            const sweepEndX = centerX + Math.cos(rad) * maxRadius;
+            const sweepEndY = centerY + Math.sin(rad) * maxRadius;
+
+            // Draw fading trail (multiple lines with decreasing opacity)
+            for (let i = 0; i < 15; i++) {
+                const trailAngle = radarSweepAngle - (i * 3); // 3 degrees apart
+                const trailRad = (trailAngle - 90) * Math.PI / 180;
+                const trailEndX = centerX + Math.cos(trailRad) * maxRadius;
+                const trailEndY = centerY + Math.sin(trailRad) * maxRadius;
+
+                // Fade from bright green to transparent
+                const opacity = (15 - i) / 15 * 0.6;
+                ctx.strokeStyle = `rgba(0, 255, 0, ${opacity})`;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.lineTo(trailEndX, trailEndY);
+                ctx.stroke();
+            }
+
+            // Draw bright main sweep arm with glow
+            ctx.shadowColor = 'rgba(0, 255, 0, 0.8)';
+            ctx.shadowBlur = 20;
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(sweepEndX, sweepEndY);
+            ctx.stroke();
+
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+        }
+
         function drawRadar() {
             const size = canvas.width;
             const centerX = size / 2;
@@ -810,6 +855,7 @@
             ctx.fillText('E', centerX + (RADIUS_MILES * pxPerMile) + 20, centerY);
             ctx.fillText('W', centerX - (RADIUS_MILES * pxPerMile) - 20, centerY);
 
+            drawRadarSweep(centerX, centerY, pxPerMile);
             drawAircraft(centerX, centerY, pxPerMile);
             drawAirports(centerX, centerY, pxPerMile);
         }
