@@ -790,7 +790,7 @@
 
                 // Fade from bright green to transparent
                 const opacity = (15 - i) / 15 * 0.6;
-                ctx.strokeStyle = `rgba(0, 255, 0, ${opacity})`;
+                ctx.strokeStyle = `rgba(0, 187, 0, ${opacity})`;
                 ctx.lineWidth = 2;
                 ctx.beginPath();
                 ctx.moveTo(centerX, centerY);
@@ -799,9 +799,9 @@
             }
 
             // Draw bright main sweep arm with glow
-            ctx.shadowColor = 'rgba(0, 255, 0, 0.8)';
-            ctx.shadowBlur = 20;
-            ctx.strokeStyle = '#00ff00';
+            ctx.shadowColor = 'rgba(0, 200, 0, 0.6)';
+            ctx.shadowBlur = 15;
+            ctx.strokeStyle = '#00bb00';
             ctx.lineWidth = 3;
             ctx.beginPath();
             ctx.moveTo(centerX, centerY);
@@ -1390,6 +1390,13 @@
         fetchSigmets();
         fetchWeather();
         updateClock();
+
+        // Animate radar sweep continuously
+        function animateRadar() {
+            drawRadar();
+            requestAnimationFrame(animateRadar);
+        }
+        animateRadar();
 
         // Refresh aircraft every 10 seconds, SIGMETs every 5 minutes, weather every 10 minutes
         setInterval(fetchAircraft, 10000);
