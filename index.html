@@ -456,12 +456,20 @@
                 padding: 1rem;
             }
 
+            /* Title and clock share one line on a phone */
+            .title-row {
+                flex-wrap: nowrap;
+                column-gap: 0.5rem;
+                margin-bottom: 0.25rem;
+            }
+
             h1 {
-                font-size: 22px;
+                font-size: 17px;
+                white-space: nowrap;
             }
 
             .clock {
-                font-size: 22px;
+                font-size: 17px;
             }
 
             .wx {
