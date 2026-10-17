@@ -499,8 +499,12 @@
             <div class="clock" id="clock" title="Local time (UTC time)">--:-- (--:--Z)</div>
         </div>
 
-        <div id="sigmetPanel" style="margin-bottom: 0; padding: 0.75rem; background: #fff; border-radius: 8px; border: 1px solid #e0e0e0; font-size: 12px; color: #666; overflow: hidden;">
-            <div id="sigmetDisplay" style="white-space: nowrap; overflow-x: auto; font-size: 12px;">SIGMETs: loading...</div>
+        <!-- SIGMET alert box (left) and always-on AWC map link box (right), touching, same size -->
+        <div style="display: flex; align-items: stretch; margin-bottom: 0;">
+            <div id="sigmetPanel" style="flex: 1; padding: 0.75rem; background: #fff; border-radius: 8px 0 0 8px; border: 1px solid #e0e0e0; font-size: 12px; color: #666; overflow: hidden; text-align: center;">
+                <div id="sigmetDisplay" style="white-space: nowrap; font-size: 12px;">SIGMETs: loading...</div>
+            </div>
+            <a id="awcMapLink" href="https://aviationweather.gov/gfa/#obs" target="_blank" rel="noopener" style="flex: 1; padding: 0.75rem; background: #fff; border-radius: 0 8px 8px 0; border: 1px solid #e0e0e0; border-left: none; font-size: 12px; font-weight: bold; color: #1565c0; text-decoration: none; text-align: center; display: block;">AWC Map FL</a>
         </div>
 
         <div class="track-row">
@@ -1028,12 +1032,19 @@
                     found++;
                 }
 
+                // Find the text area inside the left SIGMET box
                 const sigmetDiv = document.getElementById('sigmetDisplay');
+
+                // "found" counts the SIGMETs that touch the 25-mile area around home (checked in the loop above).
+                // The right-hand "AWC Map FL" box is a plain link in the HTML, so it needs no code and is always active.
                 if (found === 0) {
-                    sigmetDiv.textContent = 'No SIGMETs within 25 miles';
+                    // Nothing active: short grey text. Normal weight undoes the bold from an earlier alert.
+                    sigmetDiv.textContent = 'No SIGMETs';
                     sigmetDiv.style.color = '#666';
+                    sigmetDiv.style.fontWeight = 'normal';
                 } else {
-                    sigmetDiv.textContent = sigmetText;
+                    // At least one active: short red bold alert. The details are on the AWC map, so we don't list them here.
+                    sigmetDiv.textContent = 'SIGMETS Active';
                     sigmetDiv.style.color = '#d32f2f';
                     sigmetDiv.style.fontWeight = 'bold';
                 }
