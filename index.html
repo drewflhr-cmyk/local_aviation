@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stuart Aviation Radar</title>
+    <title>Stuart Local Radar</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
     <style>
         * {
@@ -75,7 +75,7 @@
 
         .wx {
             flex: 0 0 auto;
-            width: 120px;
+            width: 150px;              /* wide enough for "Temperature: 88°F" */
             font-size: 14px;
             font-weight: 600;
             line-height: 1.5;
@@ -477,8 +477,15 @@
             }
 
             .wx {
-                width: 90px;
-                font-size: 12px;
+                width: 108px;          /* phone: wide enough for "Temperature: 88°F" at the smaller size */
+                font-size: 11px;
+            }
+
+            /* phone: slimmer Flight Tracking button so it fits between the two weather columns
+               (!important because the button's own style attribute would otherwise win) */
+            .track-center a {
+                padding: 10px 6px !important;
+                font-size: 12px !important;
             }
 
             .sidebar {
@@ -495,7 +502,7 @@
 <body>
     <div class="container">
         <div class="title-row">
-            <h1>Local Aviation Radar</h1>
+            <h1>Stuart Local Radar</h1>
             <div class="clock" id="clock" title="Local time (UTC time)">--:-- (--:--Z)</div>
         </div>
 
@@ -518,7 +525,7 @@
             </div>
             <div class="wx wx-right" title="KSUA temperature and dew point (METAR)">
                 <div id="wxTemp">Temperature: --</div>
-                <div id="wxDew">Dew point: --</div>
+                <div id="wxDew">Dew Point: --</div>
             </div>
         </div>
 
@@ -1229,15 +1236,15 @@
                 const gust = m.wgst;
                 const variable = (typeof m.wdir === 'string');          // "VRB"
                 const dir = (typeof m.wdir === 'number') ? m.wdir % 360 : null;
-                let speedText = 'Wind Speed: --', dirText = 'Direction: --', showArrow = false;
+                let speedText = 'Wind: --', dirText = 'Direction: --', showArrow = false;
                 if (kts === 0) {
-                    speedText = 'Wind calm';
+                    speedText = 'Wind: calm';
                 } else if (typeof kts === 'number') {
-                    speedText = 'Wind ' + kts + (gust > kts ? 'G' + gust : '') + ' kt';
+                    speedText = 'Wind: ' + kts + (gust > kts ? 'G' + gust : '') + ' kt';
                     if (variable) {
-                        dirText = 'Dir VRB';
+                        dirText = 'Direction: VRB';
                     } else if (dir !== null) {
-                        dirText = 'Dir ' + String(dir).padStart(3, '0') + '°';
+                        dirText = 'Direction: ' + String(dir).padStart(3, '0') + '°';
                         showArrow = true;
                     }
                 }
@@ -1256,10 +1263,10 @@
                     arrowBox.style.display = 'none';
                 }
 
-                // erature and dew point (the METAR gives degrees C)
+                // Temperature and dew point (the METAR gives degrees C)
                 const toF = c => Math.round(c * 9 / 5 + 32);
-                document.getElementById('wx').textContent = typeof m.temp === 'number' ? 'Temperature: ' + toF(m.temp) + '°F' : 'Temp --';
-                document.getElementById('wxDew').textContent = typeof m.dewp === 'number' ? 'Dew point: ' + toF(m.dewp) + '°F' : 'Dew pt --';
+                document.getElementById('wxTemp').textContent = typeof m.temp === 'number' ? 'Temperature: ' + toF(m.temp) + '°F' : 'Temperature: --';
+                document.getElementById('wxDew').textContent = typeof m.dewp === 'number' ? 'Dew Point: ' + toF(m.dewp) + '°F' : 'Dew Point: --';
             } catch (e) {
                 console.log('Weather fetch error:', e.message);   // keep showing the last values
             }
