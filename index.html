@@ -1229,7 +1229,7 @@
                 const gust = m.wgst;
                 const variable = (typeof m.wdir === 'string');          // "VRB"
                 const dir = (typeof m.wdir === 'number') ? m.wdir % 360 : null;
-                let speedText = 'Wind --', dirText = 'Dir --', showArrow = false;
+                let speedText = 'Wind Speed: --', dirText = 'Direction: --', showArrow = false;
                 if (kts === 0) {
                     speedText = 'Wind calm';
                 } else if (typeof kts === 'number') {
@@ -1256,10 +1256,10 @@
                     arrowBox.style.display = 'none';
                 }
 
-                // Temperature and dew point (the METAR gives degrees C)
+                // erature and dew point (the METAR gives degrees C)
                 const toF = c => Math.round(c * 9 / 5 + 32);
-                document.getElementById('wxTemp').textContent = typeof m.temp === 'number' ? 'Temp ' + toF(m.temp) + '°F' : 'Temp --';
-                document.getElementById('wxDew').textContent = typeof m.dewp === 'number' ? 'Dew pt ' + toF(m.dewp) + '°F' : 'Dew pt --';
+                document.getElementById('wx').textContent = typeof m.temp === 'number' ? 'Temperature: ' + toF(m.temp) + '°F' : 'Temp --';
+                document.getElementById('wxDew').textContent = typeof m.dewp === 'number' ? 'Dew point: ' + toF(m.dewp) + '°F' : 'Dew pt --';
             } catch (e) {
                 console.log('Weather fetch error:', e.message);   // keep showing the last values
             }
