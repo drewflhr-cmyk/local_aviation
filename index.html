@@ -58,6 +58,25 @@
             font-variant-numeric: tabular-nums;
         }
 
+        /* Emergency squawk banner (7500 / 7600 / 7700). Hidden until an emergency is confirmed. */
+        #emergencyBanner {
+            display: none;
+            margin: 0.5rem 0;
+            padding: 0.75rem;
+            background: #d32f2f;
+            color: #fff;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            text-align: center;
+            animation: emgPulse 1s infinite alternate;   /* slow flash between two reds */
+        }
+
+        @keyframes emgPulse {
+            from { background: #d32f2f; }
+            to   { background: #8e0000; }
+        }
+
         /* Weather row: wind (left) | Flight Tracking button (center) | temp + dew point (right) */
         .track-row {
             display: flex;
@@ -269,6 +288,17 @@
 
         .aircraft-item.tracked strong {
             color: #d32f2f;
+        }
+
+        /* Confirmed emergency squawk: pink row with a magenta bar (different from the red N42675 row) */
+        .aircraft-item.emergency {
+            background: #fce4ec;
+            border-left: 3px solid #c2185b;
+            padding-left: 5px;
+        }
+
+        .aircraft-item.emergency strong {
+            color: #c2185b;
         }
 
         .aircraft-item strong, .airport-item strong {
@@ -515,6 +545,9 @@
             <a id="awcMapLink" href="https://aviationweather.gov/gfa/#obs" target="_blank" rel="noopener" style="flex: 1; padding: 0.75rem; background: #fff; border-radius: 0 8px 8px 0; border: 1px solid #e0e0e0; border-left: none; font-size: 12px; font-weight: bold; color: #1565c0; text-decoration: none; text-align: center; display: block;">AWC Map FL</a>
         </div>
 
+        <!-- Emergency squawk banner: the JS fills it in and shows it only while a 7500/7600/7700 is confirmed -->
+        <div id="emergencyBanner"></div>
+
         <div class="track-row">
             <div class="wx wx-left" title="KSUA wind (METAR)">
                 <div id="wxSpeed">Wind: --</div>
@@ -620,6 +653,14 @@
         const TRACKED_AIRCRAFT = 'N42675';
         const NTFY_URL = 'https://ntfy.sh/n42675';
         let notifiedAircraft = {}; // Track which aircraft we've already notified about
+
+        // Emergency squawk codes. The page shows a banner and highlights the aircraft.
+        // (The phone notification comes from the Vercel emergency check, not from this page.)
+        const EMERGENCY_CODES = { '7500': 'HIJACK', '7600': 'RADIO FAILURE', '7700': 'EMERGENCY' };
+        // The code must show up on this many refreshes in a row before it counts (filters out brief glitches).
+        // Refreshes are 10 seconds apart, so 2 = about 20 seconds.
+        const EMERGENCY_CONFIRM_REFRESHES = 2;
+        let emergencyCounts = {};   // "hex:squawk" -> how many refreshes in a row it has been seen
 
         // Radar sweep animation
         const RADAR_SWEEP_TIME_MS = 10000; // 10 seconds for full rotation (adjust this to change speed)
@@ -886,8 +927,11 @@
                 // Check if this is the tracked aircraft
                 const isTracked = ac.registration === TRACKED_AIRCRAFT;
 
-                // Determine color: red for tracked, yellow for hovered, cyan for normal
-                if (isTracked) {
+                // Determine color: magenta for a confirmed emergency squawk, red for tracked,
+                // yellow for hovered, cyan for normal
+                if (ac.emergency) {
+                    ctx.fillStyle = '#ff2bd6'; // Magenta for emergency squawk
+                } else if (isTracked) {
                     ctx.fillStyle = '#ff0000'; // Red for tracked aircraft
                 } else if (hoveredAircraft === idx) {
                     ctx.fillStyle = '#ffff00'; // Yellow for hovered
@@ -900,7 +944,7 @@
                 ctx.fill();
 
                 ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 1;
+                ctx.lineWidth = ac.emergency ? 3 : 1;   // thicker white ring on an emergency
                 ctx.stroke();
 
                 ctx.fillStyle = '#000';
@@ -1082,6 +1126,27 @@
             }
         }
 
+        // Shows (or hides) the red emergency banner at the top, based on the confirmed emergencies in the aircraft list
+        function updateEmergencyBanner() {
+            const banner = document.getElementById('emergencyBanner');
+            const emergencies = aircraft.filter(a => a.emergency);
+            if (emergencies.length === 0) {
+                banner.style.display = 'none';
+                banner.textContent = '';
+                return;
+            }
+            banner.textContent = '';   // clear the old lines
+            emergencies.forEach(ac => {
+                const who = ac.registration !== 'N/A' ? ac.registration : ac.callsign;
+                const alt = ac.altitudeText === 'GND' ? 'on the ground' : ac.altitudeText + ' ft';
+                const line = document.createElement('div');
+                // textContent (not innerHTML) so odd characters in the data can't be treated as page code
+                line.textContent = `${ac.squawk} ${EMERGENCY_CODES[ac.squawk]}: ${who} · ${ac.distance.toFixed(1)} mi · ${alt}`;
+                banner.appendChild(line);
+            });
+            banner.style.display = 'block';
+        }
+
         // Use OpenSky Network API
         async function fetchAircraft() {
             try {
@@ -1097,6 +1162,8 @@
                 if (!data.ac || data.ac.length === 0) {
                     aircraftListDiv.innerHTML = '<p style="color: #999; margin: 0;">No aircraft detected</p>';
                     aircraft = [];
+                    emergencyCounts = {};          // nothing in the area, so no emergencies either
+                    updateEmergencyBanner();
                     drawRadar();
                     statusDiv.textContent = 'Radar: Live (none)';
                     statusDiv.style.background = 'rgba(100,150,0,0.7)';
@@ -1135,12 +1202,29 @@
                     seenNow[ac.icao] = true;
                     if (!groundSince[ac.icao]) groundSince[ac.icao] = nowMs;   // first time we saw it on the ground
                     if (ac.registration === TRACKED_AIRCRAFT) return true;     // never hide the watched aircraft
+                    if (EMERGENCY_CODES[ac.squawk]) return true;               // never hide an aircraft squawking an emergency code
                     return nowMs - groundSince[ac.icao] < GROUND_HIDE_MS;
                 });
                 Object.keys(groundSince).forEach(hex => { if (!seenNow[hex]) delete groundSince[hex]; });
 
-                // Sort by distance
-                aircraft.sort((a, b) => a.distance - b.distance);
+                // Emergency squawk check. Count how many refreshes in a row each emergency code has been seen;
+                // once it reaches EMERGENCY_CONFIRM_REFRESHES the aircraft is marked as a confirmed emergency.
+                const newCounts = {};
+                aircraft.forEach(ac => {
+                    if (EMERGENCY_CODES[ac.squawk]) {
+                        const key = ac.icao + ':' + ac.squawk;
+                        newCounts[key] = (emergencyCounts[key] || 0) + 1;
+                        ac.emergency = newCounts[key] >= EMERGENCY_CONFIRM_REFRESHES;
+                    } else {
+                        ac.emergency = false;
+                    }
+                });
+                emergencyCounts = newCounts;   // anything not seen this time drops out, so the count starts over
+
+                // Sort: confirmed emergencies first, then by distance
+                aircraft.sort((a, b) => (b.emergency ? 1 : 0) - (a.emergency ? 1 : 0) || a.distance - b.distance);
+
+                updateEmergencyBanner();
 
                 // Check for tracked aircraft and send notification
                 const trackedFound = aircraft.find(ac => ac.registration === TRACKED_AIRCRAFT);
@@ -1280,13 +1364,16 @@
             } else {
                 aircraftListDiv.innerHTML = sorted.map((ac, idx) => {
                     const isTracked = ac.registration === TRACKED_AIRCRAFT;
-                    const trackedClass = isTracked ? 'tracked' : '';
+                    // Row color classes: pink for a confirmed emergency squawk, red for the tracked aircraft
+                    const rowClass = ac.emergency ? 'emergency' : (isTracked ? 'tracked' : '');
+                    // An emergency row also shows its squawk code, e.g. "7700"
+                    const emergencyTag = ac.emergency ? ` · SQUAWK ${ac.squawk}` : '';
                     return `
-                    <div class="aircraft-item ${trackedClass}"
+                    <div class="aircraft-item ${rowClass}"
                          onmouseover="hoveredAircraft = ${idx}; drawRadar();"
                          onmouseout="hoveredAircraft = null; drawRadar();"
                          onclick="showAircraftDetail(${idx});">
-                        <strong>${ac.callsign} ${ac.type || 'N/A'}</strong>
+                        <strong>${ac.callsign} ${ac.type || 'N/A'}${emergencyTag}</strong>
                         <div class="detail">${ac.distance.toFixed(1)} mi • ${ac.altitudeText} ft</div>
                         <div class="detail" style="font-size: 11px; color: #0066cc;">
                             ${ac.velocity >= 0 ? ac.velocity + ' kt' : 'N/A'} •
