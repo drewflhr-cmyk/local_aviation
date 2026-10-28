@@ -38,7 +38,7 @@ async function sendNtfy(title, body) {
   return r.ok;
 }
 
-module.exports = async (req, res) => {
+export default async (req, res) => {
   // Optional password: if you set a CRON_SECRET environment variable in Vercel, callers must give it
   const secret = process.env.CRON_SECRET;
   if (secret) {
