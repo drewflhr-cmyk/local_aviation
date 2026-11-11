@@ -56,7 +56,7 @@ export default async (req, res) => {
     const radiusNm = (RADIUS_MILES / NM_TO_MILES).toFixed(1);
     const url = `https://api.adsb.lol/v2/point/${HOME_LAT}/${HOME_LON}/${radiusNm}`;
     const r = await fetch(url, { headers: { 'User-Agent': 'local-aviation-emergency-check/1.0' } });
-    if (!r.ok) return res.status(502).json({ error: 'adsb.lol returned ' + r.status });
+    if (!r.ok) return res.status(200).json({ skipped: true, error: 'adsb.lol returned ' + r.status });
     const data = await r.json();
 
     const thisCheck = new Set();            // keys seen on this check
@@ -95,6 +95,6 @@ export default async (req, res) => {
 
     return res.status(200).json({ checked: (data.ac || []).length, alerts });
   } catch (e) {
-    return res.status(500).json({ error: String(e) });
+   return res.status(200).json({ skipped: true, error: String(e) });
   }
 };
